@@ -40,7 +40,7 @@ Service.ServerModule("Users", Users);
 In the code above we assigned an object to the variable `Users` and gave it an add method. The `Service.ServerModule(name, constructor/object)` function takes the name assigned to the object as the first argument and the object itself as the second argument.
 
 Alternatively, you can use a constructor function instead of an object as the second argument. In the example below we create another _ServerModule_ called
-"Orders". This time we use a constructor function as the second argument of the to construct our object. The `this` value is the initial instance of the _ServerModule_ object. Every method added to the `this` value will be accessible when the object is loaded by a _SystemLynx Client_. Note: _ServerModule_ methods can be synchronous ro asynchronous functions.
+"Orders". This time we use a constructor function as the second argument of the to _ServerModule_ function. The `this` value is the initial instance of the _ServerModule_ object. Every method added to the `this` value will be accessible when the object is loaded by a _SystemLynx Client_. Note: _ServerModule_ methods can be synchronous or asynchronous functions.
 
 ```javascript
 const { Service } = require("systemlynx");
@@ -148,7 +148,7 @@ const response = await Orders.find("hello", "world");
 console.log(response);
 ```
 
-Now let's go to our server application and call the `this.emit(event_name, data)` method to emit a websocket event that can be received by its corresponding Clients. Below, notice that we've added `this.emit("new_user", { message:"new_user event test" })` at the end of the `Users.add` method, so the `new_user` event will be emitted every time this method is called.
+Now let's go to our server application and call the `this.emit(event_name, data)` method to emit a websocket event that can be received by its corresponding Clients. Below, notice that we've added `this.emit("new_user", { message:"new_user event test" })` at the end of the `Users.add` method, so the `new_user` event will be emitted every time this method is called. The `this` value of a **ServerModule** method will always be scoped to the **ServerModule** itself. 
 
 ```javascript
 const { Service } = require("systemlynx");
