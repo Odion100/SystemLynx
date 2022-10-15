@@ -40,7 +40,7 @@ Service.ServerModule("Users", Users);
 In the code above we assigned an object to the variable `Users` and gave it an add method. The `Service.ServerModule(name, constructor/object)` function takes the name assigned to the object as the first argument and the object itself as the second argument.
 
 Alternatively, you can use a constructor function instead of an object as the second argument. In the example below we create another _ServerModule_ called
-"Orders".
+"Orders". This time we use a constructor function as the second argument of the to construct our object. The `this` value is the initial instance of the _ServerModule_ object. Every method added to the `this` value will be accessible when the object is loaded by a _SystemLynx Client_. Note: _ServerModule_ methods can be synchronous ro asynchronous functions.
 
 ```javascript
 const { Service } = require("systemlynx");
@@ -63,8 +63,6 @@ Service.ServerModule("Orders", function () {
   };
 });
 ```
-
-In the _ServerModule_ constructor function above, the `this` value is the initial instance of the _ServerModule_ object. Every method added to the `this` value will be accessible when the object is loaded by a _SystemLynx Client_. Note: _ServerModule_ methods can be synchronous ro asynchronous functions.
 
 ## Service.startService(options)
 
