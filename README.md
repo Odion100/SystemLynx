@@ -29,9 +29,9 @@ const { Service } = require("systemlynx");
 
 const Users = {};
 
-Users.add = function (data, callback) {
+Users.add = function (data) {
   console.log(data);
-  callback(null, { message: "You have successfully called the Users.add method" });
+  return { message: "You have successfully called the Users.add method" };
 };
 
 Service.ServerModule("Users", Users);
@@ -47,9 +47,9 @@ const { Service } = require("systemlynx");
 
 const Users = {};
 
-Users.add = function (data, callback) {
+Users.add = function (data) {
   console.log(data);
-  callback(null, { message: "You have successfully called the Users.add method" });
+  return { message: "You have successfully called the Users.add method" };
 };
 
 Service.ServerModule("Users", Users);
@@ -57,14 +57,14 @@ Service.ServerModule("Users", Users);
 Service.ServerModule("Orders", function () {
   const Orders = this;
 
-  Orders.find = function (arg1, arg2, callback) {
+  Orders.find = async function (arg1, arg2) {
     console.log(data);
-    callback(null, { message: "You have successfully called the Orders.find method" });
+    return { message: "You have successfully called the Orders.find method" };
   };
 });
 ```
 
-In the _ServerModule_ constructor function above, the `this` value is the initial instance of the _ServerModule_ object. Every method added to the `this` value will be accessible when the object is loaded by a _SystemLynx Client_. Notice that the method we created, `Orders.find = function(arg1, arg2, callback)...`, has 3 parameters including a callback function as the last argument. By defualt all _ServerModule_ methods will recieve a callback function as its last argument. Use the first parameter of the callback function to respond with an error, and the second parameter to send a success response. Note: _ServerModule_ methods can be configured to work with synchronous return values instead of asynchronous callbacks (read more about Service configuration [here](https://github.com/Odion100/SystemLynx/blob/tasksjs2.0/API.md#apploadserviceurl)).
+In the _ServerModule_ constructor function above, the `this` value is the initial instance of the _ServerModule_ object. Every method added to the `this` value will be accessible when the object is loaded by a _SystemLynx Client_. Note: _ServerModule_ methods can be synchronous ro asynchronous functions.
 
 ## Service.startService(options)
 
@@ -75,9 +75,9 @@ const { Service } = require("systemlynx");
 
 const Users = {};
 
-Users.add = function (data, callback) {
+Users.add = function (data) {
   console.log(data);
-  callback(null, { message: "You have successfully called the Users.add method" });
+  return { message: "You have successfully called the Users.add method" };
 };
 
 Service.ServerModule("Users", Users);
@@ -85,9 +85,9 @@ Service.ServerModule("Users", Users);
 Service.ServerModule("Orders", function () {
   const Orders = this;
 
-  Orders.find = function (arg1, arg2, callback) {
+  Orders.find = function (arg1, arg2) {
     console.log(data);
-    callback(null, { message: "You have successfully called the Orders.find method" });
+    return { message: "You have successfully called the Orders.find method" };
   };
 });
 
@@ -108,7 +108,7 @@ const { Users, Orders } = await Client.loadService("http://localhost:4400/test/s
 console.log(Users, Orders);
 ```
 
-Now that we've loaded the _Service_ that we created in the previous example, and have a handle on the _Users_ and _Orders_ objects hosted by the _Service_, we can now call any method on those objects. In the example below, we demonstrate that when a methods for the ServerModule objects is called from the client, it can optionally take a callback as the last argument or, if a callback is not used, it will return a promise. With the `Users.add(data, callback)` method we used a callback, but with the `Orders.find(arg1, arg2, callback)` method we left out the callback function and used the `await` keyword to return a promise.
+Now that we've loaded the _Service_ that we created in the previous example, and have a handle on the _Users_ and _Orders_ objects hosted by the _Service_, we can now call any method on those objects in the same way we would remotely. In the example below, noticed that both the `User.add` and `Orders.find` methods will return a promise.
 
 ```javascript
 const { Client } = require("systemlynx");
@@ -117,10 +117,9 @@ const { Users, Orders } = await Client.loadService("http://localhost:4400/test/s
 
 console.log(Users, Orders);
 
-Users.add({ message: "Users.add Test" }, function (err, results) {
-  if (err) console.log(err);
-  else console.log(results);
-});
+const results = await Users.add({ message: "Users.add Test" });
+
+console.log(results);
 
 const response = await Orders.find("hello", "world");
 
@@ -138,10 +137,9 @@ const { Users, Orders } = await Client.loadService("http://localhost:4400/test/s
 
 console.log(Users, Orders);
 
-Users.add({ message: "Users.add Test" }, function (err, results) {
-  if (err) console.log(err);
-  else console.log(results);
-});
+const results = await Users.add({ message: "Users.add Test" });
+
+console.log(results);
 
 Users.on("new_user", function (event) {
   console.log(event);
@@ -152,17 +150,17 @@ const response = await Orders.find("hello", "world");
 console.log(response);
 ```
 
-Now let's go to our server application and call the `Users.emit(event_name, data)` method to emit a websocket event that can be received by its corresponding Clients. Below, notice that we've added `Users.emit("new_user", { message:"new_user event test" })` at the end of the `Users.add` method, so the `new_user` event will be emitted every time this method is called.
+Now let's go to our server application and call the `this.emit(event_name, data)` method to emit a websocket event that can be received by its corresponding Clients. Below, notice that we've added `this.emit("new_user", { message:"new_user event test" })` at the end of the `Users.add` method, so the `new_user` event will be emitted every time this method is called.
 
 ```javascript
 const { Service } = require("systemlynx");
 
 const Users = {};
 
-Users.add = function (data, callback) {
+Users.add = function (data) {
   console.log(data);
-  callback(null, { message: "You have successfully called the Users.add method" });
-  Users.emit("new_user", { message: "new_user event test" });
+  return { message: "You have successfully called the Users.add method" };
+  this.emit("new_user", { message: "new_user event test" });
 };
 
 Service.ServerModule("Users", Users);
@@ -170,9 +168,9 @@ Service.ServerModule("Users", Users);
 Service.ServerModule("Orders", function () {
   const Orders = this;
 
-  Orders.find = function (arg1, arg2, callback) {
+  Orders.find = function (arg1, arg2) {
     console.log(data);
-    callback(null, { message: "You have successfully called the Orders.find method" });
+    return { message: "You have successfully called the Orders.find method" };
   };
 });
 
