@@ -73,10 +73,10 @@ Welcome to the docs! Following is a list of the objects used and created when de
 
 ## App
 
-**App** combinds the both functionalites of SystemLynx Service and Client into one object, while also providing a module interface and lifecycle events. Access the App instance by deconcatanating from the object return when loading SystemLynx `require("sht-tasks")`.
+**App** combinds the both functionalites of SystemLynx Service and Client into one object, while also providing a module interface and lifecycle events. Access the App instance by deconcatanating from the object return when loading SystemLynx `require("systemlynx")`.
 
 ```javascript
-const { App } = require("sht-tasks");
+const { App } = require("systemlynx");
 ```
 
 ## App.ServerModule(name, constructor [,reserved_methods])
@@ -108,10 +108,10 @@ Use **App.ServerModule(name, constructor)** function to create or pass an object
 
 Service is a SystemLynx abstraction used to server objects that can be loaded by a SystemLynx Client using the `Client.loadService(url)` method.
 
-Call require("sht-tasks") and de-concatenate from the object it returns.
+Call require("systemlynx") and de-concatenate from the object it returns.
 
 ```javascript
-const { Service } = require("sht-tasks");
+const { Service } = require("systemlynx");
 ```
 
 The Service object has the following methods:
@@ -127,7 +127,7 @@ The Service object has the following methods:
   Use the `Service.ServerModule(name, constructor, [,options])` method to register an object to be hosted by a _SystemLynx Service_. This will allows you to load an instance of that object onto a client application, and call any methods on that object remotely.
 
 ```javascript
-const { Service } = require("sht-tasks");
+const { Service } = require("systemlynx");
 
 const Users = {};
 
