@@ -16,10 +16,7 @@ module.exports = function SystemLynxServerManager() {
     useREST: false,
     useService: true,
     staticRouting: false,
-    validateArgs: true,
     middleware: [],
-    useCallbacks: true,
-    useReturnValues: false,
   };
   const server = SystemLynxServer();
   const router = SystemLynxRouter(server, () => serverConfigurations);

@@ -10,5 +10,5 @@ module.exports = async function loadModules(system) {
     system.Service.ServerModule(name, __constructor)
   );
   if (system.routing) await system.Service.startService(system.routing);
-  system.App.emit("init_complete", system);
+  system.App.emit("ready", system);
 };

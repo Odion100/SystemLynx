@@ -45,7 +45,7 @@ describe("App: Loading Services", () => {
     await new Promise((resolve) => {
       const App = AppFactory();
       App.loadService("test", `http://localhost:${port}/${route}`).on(
-        "init_complete",
+        "ready",
         (system) => {
           expect(system.Services[0]).to.be.an("object");
 
@@ -151,7 +151,7 @@ describe("App: Loading Services", () => {
             .that.respondsTo("resetConnection");
           resolve();
         })
-        .on("init_complete", resolve);
+        .on("ready", resolve);
     });
   });
 });
@@ -189,7 +189,7 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
     const url = `http://localhost:${port}/${route}`;
 
     await new Promise((resolve) =>
-      App.startService({ route, port }).on("init_complete", resolve)
+      App.startService({ route, port }).on("ready", resolve)
     );
     const connData = await HttpClient.request({ url });
 
@@ -223,7 +223,7 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
           this.test = () => {};
           this.test2 = () => {};
         })
-        .on("init_complete", resolve)
+        .on("ready", resolve)
     );
 
     const connData = await HttpClient.request({ url });
@@ -253,7 +253,7 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
     ]);
   });
 
-  it('should be able to use App.on("init_complete", callback) fire a callback when App initialization is complete', async () => {
+  it('should be able to use App.on("ready", callback) fire a callback when App initialization is complete', async () => {
     const App = AppFactory();
 
     App.ServerModule("mod", function () {
@@ -265,7 +265,7 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
     });
 
     await new Promise((resolve) =>
-      App.on("init_complete", (system) => {
+      App.on("ready", (system) => {
         expect(system)
           .to.be.an("object")
           .that.has.all.keys(
@@ -303,7 +303,7 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
       });
 
     await new Promise((resolve) =>
-      App.on("init_complete", ({ configurations }) => {
+      App.on("ready", ({ configurations }) => {
         expect(configurations)
           .to.be.an("object")
           .that.has.all.keys("module", "__constructor")
@@ -349,6 +349,6 @@ describe("SystemObjects", () => {
         this.configPassed = true;
         next();
       });
-    return new Promise((resolve) => App.on("init_complete", () => resolve()));
+    return new Promise((resolve) => App.on("ready", () => resolve()));
   });
 });
