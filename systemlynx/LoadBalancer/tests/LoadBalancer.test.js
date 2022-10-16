@@ -14,13 +14,13 @@ describe("LoadBalancerFactory", () => {
         "Server",
         "WebSocket",
         "defaultModule",
-        "ServerModule",
+        "module",
         "clones"
       )
       .that.respondsTo("startService")
       .that.respondsTo("Server")
       .that.respondsTo("WebSocket")
-      .that.respondsTo("ServerModule");
+      .that.respondsTo("module");
     expect(LoadBalancer.clones)
       .to.be.an("object")
       .that.has.all.keys("on", "emit", "clones", "register", "dispatch", "assignDispatch")
@@ -60,7 +60,7 @@ describe("LoadBalancer", () => {
       .to.has.a.lengthOf(1);
   });
 });
-describe("LoadBalancer.clones (ServerModule)", () => {
+describe("LoadBalancer.clones (Module)", () => {
   const test_service1 = {
     route: "test-service1",
     port: 5393,

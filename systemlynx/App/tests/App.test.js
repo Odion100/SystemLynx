@@ -11,7 +11,6 @@ describe("App Factory", () => {
       .to.be.an("object")
       .that.has.all.keys(
         "module",
-        "ServerModule",
         "on",
         "emit",
         "startService",
@@ -20,7 +19,6 @@ describe("App Factory", () => {
         "config"
       )
       .that.respondsTo("module")
-      .that.respondsTo("ServerModule")
       .that.respondsTo("on")
       .that.respondsTo("emit")
       .that.respondsTo("startService")
@@ -35,7 +33,7 @@ describe("App: Loading Services", () => {
     const route = "test-service";
     const port = "8503";
 
-    Service.ServerModule("mod", function () {
+    Service.module("mod", function () {
       this.test = () => {};
       this.test2 = () => {};
     });
@@ -68,7 +66,7 @@ describe("App: Loading Services", () => {
     const port = "8422";
     const url = `http://localhost:${port}/${route}`;
 
-    Service.ServerModule("mod", function () {
+    Service.module("mod", function () {
       this.test = () => {};
       this.test2 = () => {};
     });
@@ -95,7 +93,7 @@ describe("App: Loading Services", () => {
     const route = "test-service";
     const port = "8423";
     const url = `http://localhost:${port}/${route}`;
-    Service.ServerModule("mod", function () {
+    Service.module("mod", function () {
       this.test = () => {};
       this.test2 = () => {};
     });
@@ -131,7 +129,7 @@ describe("App: Loading Services", () => {
     const port = "8442";
     const url = `http://localhost:${port}/${route}`;
 
-    Service.ServerModule("mod", function () {
+    Service.module("mod", function () {
       this.test = () => {};
       this.test2 = () => {};
     });
@@ -156,7 +154,7 @@ describe("App: Loading Services", () => {
   });
 });
 
-describe("App SystemObjects: Initializing Modules,  ServerModules and configurations", () => {
+describe("App SystemObjects: Initializing Modules,  Modules and configurations", () => {
   it("should be able to use App.module to initialize a module", async () => {
     const App = AppFactory();
     return new Promise((resolve) =>
@@ -208,18 +206,18 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
       .that.is.an("array").that.is.empty;
     expect(connData.serviceUrl).to.equal(url);
   });
-  it("should be able to use App.ServerModule to add a hosted ServerModule to the Service", async () => {
+  it("should be able to use App.module to add a hosted Module to the Service", async () => {
     const App = AppFactory();
     const route = "test-service";
     const port = "8494";
     const url = `http://localhost:${port}/${route}`;
     await new Promise((resolve) =>
       App.startService({ route, port })
-        .ServerModule("mod", function () {
+        .module("mod", function () {
           this.test = () => {};
           this.test2 = () => {};
         })
-        .ServerModule("mod2", function () {
+        .module("mod2", function () {
           this.test = () => {};
           this.test2 = () => {};
         })
@@ -256,7 +254,7 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
   it('should be able to use App.on("ready", callback) fire a callback when App initialization is complete', async () => {
     const App = AppFactory();
 
-    App.ServerModule("mod", function () {
+    App.module("mod", function () {
       this.test = () => {};
       this.test2 = () => {};
     }).module("mod", function () {
@@ -272,13 +270,9 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
             "Services",
             "Service",
             "Modules",
-            "ServerModules",
             "configurations",
             "App",
-            "routing",
-            "useService",
-            "useModule",
-            "useConfig"
+            "routing"
           );
         resolve();
       })
@@ -288,7 +282,7 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
   it("should be able to use App.config(constructor) to construct a configuartion module", async () => {
     const App = AppFactory();
 
-    App.ServerModule("mod", function () {
+    App.module("mod", function () {
       this.test = () => {};
       this.test2 = () => {};
     })
@@ -318,7 +312,7 @@ describe("App SystemObjects: Initializing Modules,  ServerModules and configurat
 });
 
 describe("SystemObjects", () => {
-  it("should be able to use this.useModule and this.useService within modules and ServerModule", () => {
+  it("should be able to use this.useModule and this.useService within modules and Module", () => {
     const App = AppFactory();
     App.module("mod1", function () {
       expect(this)
@@ -348,6 +342,17 @@ describe("SystemObjects", () => {
           .that.respondsTo("useConfig");
         this.configPassed = true;
         next();
+      })
+      .on("ready", function () {
+        expect(this)
+          .to.be.an("object")
+          .that.respondsTo("useService")
+          .that.respondsTo("useModule")
+          .that.respondsTo("useConfig");
+        const mod1 = this.useModule("mod1");
+        const config = this.useConfig();
+        expect(mod1.testPassed).to.equal(true);
+        expect(config.configPassed).to.equal(true);
       });
     return new Promise((resolve) => App.on("ready", () => resolve()));
   });

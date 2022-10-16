@@ -20,9 +20,9 @@ Find the full [API Documentation](https://github.com/Odion100/SystemLynx/blob/ta
 
 # Quick Start
 
-## Service.ServerModule(name, constructor [,options])
+## Service.module(name, constructor [,options])
 
-Use the `Service.ServerModule(name, constructor/object)` method to add an object to be hosted by a **SystemLynx Service**. This will allows you to load an instance of that object into a client application, and call any methods on that object remotely.
+Use the `Service.module(name, constructor/object)` method to add an object to be hosted by a **SystemLynx Service**. This will allows you to load an instance of that object into a client application, and call any methods on that object remotely.
 
 ```javascript
 const { Service } = require("systemlynx");
@@ -34,12 +34,12 @@ Users.add = function (data) {
   return { message: "You have successfully called the Users.add method" };
 };
 
-Service.ServerModule("Users", Users);
+Service.module("Users", Users);
 ```
 
-In the code above we assigned an object to the variable `Users` and gave it an add method. The `Service.ServerModule(name, constructor/object)` function takes the name assigned to the object as the first argument and the object itself as the second argument.
+In the code above we assigned an object to the variable `Users` and gave it an add method. The `Service.module(name, constructor/object)` function takes the name assigned to the object as the first argument and the object itself as the second argument.
 
-Alternatively, you can use a constructor function instead of an object as the second argument. In the example below we create another **ServerModule** called "Orders". This time we use a constructor function as the second argument of the to **Service.ServerModule** function. The `this` value is the initial instance of the **ServerModule** object. Every method added to the `this` value will be accessible when the object is loaded by a **SystemLynx Client**. Note: **ServerModule** methods can be synchronous or asynchronous functions.
+Alternatively, you can use a constructor function instead of an object as the second argument. In the example below we create another **Module** called "Orders". This time we use a constructor function as the second argument of the to **Service.module** function. The `this` value is the initial instance of the **Module** object. Every method added to the `this` value will be accessible when the object is loaded by a **SystemLynx Client**. Note: **Module** methods can be synchronous or asynchronous functions.
 
 ```javascript
 const { Service } = require("systemlynx");
@@ -51,9 +51,9 @@ Users.add = function (data) {
   return { message: "You have successfully called the Users.add method" };
 };
 
-Service.ServerModule("Users", Users);
+Service.module("Users", Users);
 
-Service.ServerModule("Orders", function () {
+Service.module("Orders", function () {
   const Orders = this;
 
   Orders.find = async function (arg1, arg2) {
@@ -77,9 +77,9 @@ Users.add = function (data) {
   return { message: "You have successfully called the Users.add method" };
 };
 
-Service.ServerModule("Users", Users);
+Service.module("Users", Users);
 
-Service.ServerModule("Orders", function () {
+Service.module("Orders", function () {
   const Orders = this;
 
   Orders.find = function (arg1, arg2) {
@@ -125,7 +125,7 @@ console.log(response);
 
 ## Sending and Receiving Websocket Events
 
-We can also receive WebSocket events emitted from the remote objects we've loaded using the `Client.loadService(url)` function. In the example below we're using the `Users.on(event_name, callback)` method to listen for events coming from the "Users" **ServerModule**.
+We can also receive WebSocket events emitted from the remote objects we've loaded using the `Client.loadService(url)` function. In the example below we're using the `Users.on(event_name, callback)` method to listen for events coming from the "Users" **Module**.
 
 ```javascript
 const { Client } = require("systemlynx");
@@ -147,7 +147,7 @@ const response = await Orders.find("hello", "world");
 console.log(response);
 ```
 
-Now let's go to our server application and call the `Users.emit(event_name, data)` method to emit a websocket event that can be received by its corresponding Clients. Below, notice that we've added `this.emit("new_user", { message:"new_user event test" })` at the end of the `Users.add` method, so the `new_user` event will be emitted every time this method is called. The `this` value of a **ServerModule** method will always be scoped to the **ServerModule** itself.
+Now let's go to our server application and call the `Users.emit(event_name, data)` method to emit a websocket event that can be received by its corresponding Clients. Below, notice that we've added `this.emit("new_user", { message:"new_user event test" })` at the end of the `Users.add` method, so the `new_user` event will be emitted every time this method is called. The `this` value of a **Module** method will always be scoped to the **Module** itself.
 
 ```javascript
 const { Service } = require("systemlynx");
@@ -160,9 +160,9 @@ Users.add = function (data) {
   this.emit("new_user", { message: "new_user event test" });
 };
 
-Service.ServerModule("Users", Users);
+Service.module("Users", Users);
 
-Service.ServerModule("Orders", function () {
+Service.module("Orders", function () {
   const Orders = this;
 
   Orders.find = function (arg1, arg2) {

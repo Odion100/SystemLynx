@@ -7,15 +7,9 @@ describe("SystemLynxService", () => {
     const Service = ServiceFactory();
     expect(Service)
       .to.be.an("object")
-      .that.has.all.keys(
-        "startService",
-        "ServerModule",
-        "Server",
-        "WebSocket",
-        "defaultModule"
-      )
+      .that.has.all.keys("startService", "module", "Server", "WebSocket", "defaultModule")
       .that.respondsTo("startService")
-      .that.respondsTo("ServerModule")
+      .that.respondsTo("module")
       .that.respondsTo("Server")
       .that.respondsTo("WebSocket");
   });
@@ -54,14 +48,14 @@ describe("Service factory", () => {
   it("should throw an Error if Service.startService(options) is called twice", () => {});
 });
 
-describe("Service.ServerModule(constructor)", () => {
+describe("Service.module(constructor)", () => {
   const Service = ServiceFactory();
   const port = 6542;
   const route = "test/service";
   const url = `http://localhost:${port}/${route}`;
 
   it("should be able to return a Service instance constructed using the 'this' value in the constructor function", () => {
-    const mod = Service.ServerModule("mod", function () {
+    const mod = Service.module("mod", function () {
       this.test = () => {};
       this.test2 = () => {};
     });
@@ -116,13 +110,13 @@ describe("Service.ServerModule(constructor)", () => {
   });
 });
 
-describe("Service.ServerModule(object)", () => {
+describe("Service.module(object)", () => {
   const Service = ServiceFactory();
   const port = 6543;
   const route = "test/service2";
   const url = `http://localhost:${port}/${route}`;
   it("should be able to return a Service instance created using an object as the constructor", () => {
-    const mod = Service.ServerModule("mod", {
+    const mod = Service.module("mod", {
       action1: () => {},
       action2: () => {},
     });

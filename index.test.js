@@ -33,7 +33,6 @@ describe("SystemLynx Objects", () => {
       .to.be.an("object")
       .that.has.all.keys(
         "module",
-        "ServerModule",
         "on",
         "emit",
         "startService",
@@ -42,7 +41,6 @@ describe("SystemLynx Objects", () => {
         "config"
       )
       .that.respondsTo("module")
-      .that.respondsTo("ServerModule")
       .that.respondsTo("on")
       .that.respondsTo("emit")
       .that.respondsTo("startService")
@@ -74,13 +72,13 @@ describe("SystemLynx Objects", () => {
         "Server",
         "WebSocket",
         "defaultModule",
-        "ServerModule",
-        "clones"
+        "clones",
+        "module"
       )
       .that.respondsTo("startService")
       .that.respondsTo("Server")
       .that.respondsTo("WebSocket")
-      .that.respondsTo("ServerModule");
+      .that.respondsTo("module");
     expect(LoadBalancer.clones)
       .to.be.an("object")
       .that.has.all.keys("on", "emit", "clones", "register", "dispatch", "assignDispatch")
@@ -106,15 +104,7 @@ describe("SystemLynx Objects", () => {
   it("should return a new instance of a Service", () => {
     expect(Service)
       .to.be.an("object")
-      .that.has.all.keys(
-        "startService",
-        "ServerModule",
-        "Server",
-        "WebSocket",
-        "defaultModule"
-      )
       .that.respondsTo("startService")
-      .that.respondsTo("ServerModule")
       .that.respondsTo("Server")
       .that.respondsTo("WebSocket");
   });

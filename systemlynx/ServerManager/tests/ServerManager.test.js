@@ -16,7 +16,7 @@ describe("SystemLynxServerManager function", () => {
   });
 });
 describe("ServerManager", () => {
-  it("should be able use ServerManager.startService to start a server that will accept requests for ServerModule Connection Data on the given route", async () => {
+  it("should be able use ServerManager.startService to start a server that will accept requests for Module Connection Data on the given route", async () => {
     const ServerManager = SystemLynxServerManager();
     const route = "/testService";
     const port = 4400;
@@ -157,7 +157,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
     });
   });
 
-  it("should be able to use the staticRouting=true property to create static routes to the ServerModules", async () => {
+  it("should be able to use the staticRouting=true property to create static routes to the Modules", async () => {
     const ServerManager = SystemLynxServerManager();
     const route = "/testAPI";
     const port = 2233;

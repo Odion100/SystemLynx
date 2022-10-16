@@ -10,8 +10,7 @@ Welcome to the docs! Following is a list of the objects used and created when de
 - [**startService(options)**](https://github.com/Odion100/SystemLynx/blob/tasksjs2.0/API.md#appstartserviceoptions) 
 - [**loadService(name, url)**](https://github.com/Odion100/SystemLynx/blob/tasksjs2.0/API.md#apploadserviceurl) 
 - [**onLoad(callback)**](https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#apponloadcallback) 
-- [**ServerModule(name, constructor [,reserved_methods])**]() 
-- [**Module(name, constructor)**](https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#appmodulename-constructor) 
+- [**module(name, constructor [,reserved_methods])**]() 
 - [**config(constructor)**](https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#appconfigconstructor) 
 - [**on(event, callback)**]() 
 - [**emit(event, payload)**]()
@@ -29,7 +28,7 @@ Welcome to the docs! Following is a list of the objects used and created when de
    <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#service">Service</a></b></summary>
     
 - [**startService(options)**]() 
-- [**ServerModule(name, constructor [,options])**]() 
+- [**module(name, constructor [,options])**]() 
 - [**Server()**]() 
 - [**WebSocket()**]()
 
@@ -39,7 +38,7 @@ Welcome to the docs! Following is a list of the objects used and created when de
    <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#service">LoadBalancer</a></b></summary>
     
 - [**startService(options)**]() 
-- [**ServerModule(name, constructor [,options])**]() 
+- [**module(name, constructor [,options])**]() 
 - [**Server()**]() 
 - [**WebSocket()**]() 
 - [**clones**]()
@@ -61,7 +60,7 @@ Welcome to the docs! Following is a list of the objects used and created when de
 </details>
 
 <details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md">ServerModule</a></b></summary>
+   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md">module</a></b></summary>
     
 - [**[created_method]([args...] [,callback])**]() 
 - [**on(name, constructor [,options])**]() 
@@ -79,9 +78,9 @@ Welcome to the docs! Following is a list of the objects used and created when de
 const { App } = require("systemlynx");
 ```
 
-## App.ServerModule(name, constructor [,reserved_methods])
+## App.module(name, constructor [,reserved_methods])
 
-Use **App.ServerModule(name, constructor)** function to create or pass an object that can be loaded by a SystemLynx Client.
+Use **App.module(name, constructor)** function to create or pass an object that can be loaded by a SystemLynx Client.
 
 - **_name_** (string) - name assigned to the module or object
 - **_constructor_** (object/function) -
@@ -92,7 +91,7 @@ Use **App.ServerModule(name, constructor)** function to create or pass an object
 
 ## App.onLoad(callback)
 
-## App.Module(name, constructor)
+## App.module(name, constructor)
 
 ## App.config(constructor)
 
@@ -116,15 +115,15 @@ const { Service } = require("systemlynx");
 
 The Service object has the following methods:
 
-- **_Service.ServerModule(name, constructor [,reserved_methods])_** - Used to create or pass an object that is hosted by the Service.
+- **_Service.module(name, constructor [,reserved_methods])_** - Used to create or pass an object that is hosted by the Service.
 - **_Service.startService(options)_** - Used
 - **_Service.Server()_** - Returns the expressJS app instance used to handle routing to the _Services_.
 - **_Service.WebSocket()_** - Returns socket.io WebSocket instance used to emit events from the _Services_.
 
-## Service.ServerModule(name, constructor [,reserved_methods])
+## Service.module(name, constructor [,reserved_methods])
 
 - **Name** - String -
-  Use the `Service.ServerModule(name, constructor, [,options])` method to register an object to be hosted by a _SystemLynx Service_. This will allows you to load an instance of that object onto a client application, and call any methods on that object remotely.
+  Use the `Service.module(name, constructor, [,options])` method to register an object to be hosted by a _SystemLynx Service_. This will allows you to load an instance of that object onto a client application, and call any methods on that object remotely.
 
 ```javascript
 const { Service } = require("systemlynx");

@@ -6,29 +6,25 @@ const Dispatcher = require("../Dispatcher/Dispatcher");
 const initializeApp = require("./components/initializeApp");
 
 module.exports = function SystemLynxApp() {
-  const App = Dispatcher();
-  const system = {
-    Services: [],
-    Modules: [],
-    ServerModules: [],
-    configurations: {},
-    App,
-    routing: null,
-  };
-  SystemObject.apply(system, [system]);
+  const { on, emit } = Dispatcher();
+  const App = { emit };
+  const system = { Services: [], Modules: [], configurations: {}, App, routing: null };
+  const systemObject = SystemObject(system);
   setTimeout(() => initializeApp(system), 0);
+
+  App.on = (name, callback) => on(name, callback.bind(systemObject));
 
   if (isNode) {
     system.Service = ServiceFactory();
-    system.Service.defaultModule = SystemObject(system);
+    system.Service.defaultModule = systemObject;
 
     App.startService = (options) => {
       system.routing = options;
       return App;
     };
 
-    App.ServerModule = (name, __constructor) => {
-      system.ServerModules.push({
+    App.module = (name, __constructor) => {
+      system.Modules.push({
         name,
         __constructor,
       });
@@ -49,15 +45,6 @@ module.exports = function SystemLynxApp() {
   App.onLoad = (handler) => {
     const service = system.Services[system.Services.length - 1];
     service.onLoad = handler;
-    return App;
-  };
-
-  App.module = (name, __constructor) => {
-    system.Modules.push({
-      name,
-      __constructor,
-      module: SystemObject(system),
-    });
     return App;
   };
 

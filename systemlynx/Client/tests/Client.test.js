@@ -17,7 +17,7 @@ describe("Client Factory", () => {
 });
 describe("Client", () => {
   it("should be able to use Client.loadService(url, options) to return a promise that resolve into a backend service", async () => {
-    Service.ServerModule(
+    Service.module(
       "orders",
       function () {
         this.action1 = (data) => ({ SERVICE_TEST_PASSED: true, ...data, action1: true });
@@ -73,7 +73,7 @@ describe("Client", () => {
 });
 
 describe("Service", () => {
-  it("should be able to call methods from the frontend client to the backend ServerModule", async () => {
+  it("should be able to call methods from the frontend client to the backend Module", async () => {
     const Client = ClientFactory();
     const buAPI = await Client.loadService(url);
 
@@ -88,7 +88,7 @@ describe("Service", () => {
       action2: true,
     });
   });
-  it("should be able to send multiple arguments to the backend ServerModule", async () => {
+  it("should be able to send multiple arguments to the backend Module", async () => {
     const Client = ClientFactory();
     const buAPI = await Client.loadService(url);
     const arg1 = 4,
@@ -119,7 +119,7 @@ describe("Service", () => {
 
   it("should be able to receive events emitted from the backend Client", async () => {
     const eventName = "testing";
-    const eventTester = Service.ServerModule("eventTester", function () {
+    const eventTester = Service.module("eventTester", function () {
       const eventTester = this;
       eventTester.sendEvent = () => eventTester.emit(eventName, { testPassed: true });
     });
@@ -149,7 +149,7 @@ describe("Service", () => {
     const port = "8492";
     const url = `http://localhost:${port}/${route}`;
     const useREST = true;
-    Service.ServerModule("restTester", function () {
+    Service.module("restTester", function () {
       this.get = (data) => ({ REST_TEST_PASSED: true, getResponse: true, ...data });
       this.put = () => ({ REST_TEST_PASSED: true, putResponse: true });
       this.post = () => ({ REST_TEST_PASSED: true, postResponse: true });
@@ -177,13 +177,13 @@ describe("Service", () => {
     });
   });
 
-  it("should be able to use 'useReturnValue' configuration option to enable synchronous return values from ServerModule methods", async () => {
+  it("should be able to use 'useReturnValue' configuration option to enable synchronous return values from Module methods", async () => {
     const service = ServiceFactory();
     const route = "sync/test";
     const port = 4920;
     const host = "localhost";
     const url = `http://localhost:${port}/${route}`;
-    service.ServerModule("AsyncMath", function () {
+    service.module("AsyncMath", function () {
       this.max = Math.max;
       this.min = Math.min;
       this.round = Math.round;

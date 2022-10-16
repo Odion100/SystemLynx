@@ -4,26 +4,26 @@ const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
 const isPromise = (p) => typeof p === "object" && typeof p.then === "function";
 
 module.exports = function SystemLynxRouter(server, config) {
-  const addService = (ServerModule, route, { fn, method }, module_name) => {
+  const addService = (Module, route, { fn, method }, module_name) => {
     server[method](
       [`/${route}/${fn}`, `/sf/${route}/${fn}`, `/mf/${route}/${fn}`],
       (req, res, next) => {
         req.module_name = module_name;
         req.fn = fn;
-        req.ServerModule = ServerModule;
+        req.Module = Module;
         next();
       },
       routeHandler
     );
   };
 
-  const addREST = (ServerModule, route, { method }, module_name) => {
+  const addREST = (Module, route, { method }, module_name) => {
     server[method](
       [`/${route}`],
       (req, res, next) => {
         req.module_name = module_name;
         req.fn = method;
-        req.ServerModule = ServerModule;
+        req.Module = Module;
         next();
       },
       routeHandler
@@ -31,7 +31,7 @@ module.exports = function SystemLynxRouter(server, config) {
   };
 
   const routeHandler = (req, res) => {
-    const { query, file, files, body, fn, ServerModule, module_name, method } = req;
+    const { query, file, files, body, fn, Module, module_name, method } = req;
     const { serviceUrl } = config();
     const presets = { serviceUrl, module_name, fn };
 
@@ -62,7 +62,7 @@ module.exports = function SystemLynxRouter(server, config) {
       } else sendError(returnValue);
     };
 
-    if (typeof ServerModule[fn] !== "function")
+    if (typeof Module[fn] !== "function")
       return sendResponse({
         message: `[SystemLynx][error]:${module_name}.${fn} method not found`,
         status: 404,
@@ -73,7 +73,7 @@ module.exports = function SystemLynxRouter(server, config) {
       if (!isEmpty(query) && !args.length) args.push(query);
       if (isObject(args[0]) && method === "PUT") args[0] = { ...args[0], file, files };
 
-      const results = ServerModule[fn].apply(ServerModule, args);
+      const results = Module[fn].apply(Module, args);
 
       if (isPromise(results)) {
         results.then(sendResponse).catch(sendError);
