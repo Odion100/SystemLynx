@@ -18,7 +18,7 @@ module.exports = async function initApp(system) {
   try {
     await loadServices(system);
   } catch (err) {
-    throw `(AppERROR): Initialization Error - failed to load all services`;
+    throw `[SystemLynx][App][Error]: Initialization Error - failed to load all services`;
   }
 
   if (typeof system.configurations.__constructor === "function") {
@@ -27,7 +27,7 @@ module.exports = async function initApp(system) {
       () => {
         configComplete = true;
         loadModules(system);
-      }
+      },
     ]);
   } else loadModules(system);
 };

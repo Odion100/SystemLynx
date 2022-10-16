@@ -49,7 +49,7 @@ module.exports = function ServiceRequestHandler(method, fn, resetConnection) {
         console.log(err);
         errCount++;
         resetConnection(() => tryRequest(cb, errCount));
-      } else throw Error(`(SystemLynxServiceError): Invalid route:${err}`);
+      } else throw Error(`[SystemLynx][Service][Error]: Invalid route:${err}`);
     };
 
     return new Promise((resolve, reject) =>

@@ -11,7 +11,7 @@ module.exports = function loadConnectionData(url, { limit = 10, wait = 150 } = {
         if (errors.length < limit)
           setTimeout(() => getData(resolve), errors.length * wait);
         else
-          throw `SystemLynx loadConnectionData() Error: url:${url}, attempts:${errors.length}`;
+          throw `[SystemLynx][Client][Error]: Failed to load Service @${url} after ${errors.length} attempts.`;
       } else resolve(results);
     });
   });

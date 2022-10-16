@@ -4,7 +4,6 @@ const ServiceFactory = require("../Service/Service");
 const SystemObject = require("./components/SystemObject");
 const Dispatcher = require("../Dispatcher/Dispatcher");
 const initializeApp = require("./components/initializeApp");
-const URL = require("url");
 
 module.exports = function SystemLynxApp() {
   const App = Dispatcher();
@@ -67,7 +66,7 @@ module.exports = function SystemLynxApp() {
       system.configurations = { __constructor, module: SystemObject(system) };
     else
       throw Error(
-        "App.config methods requires a constructor function as it first parameter."
+        "[SystemLynx][App][Error]: App.config(...) methods requires a constructor function as its first parameter."
       );
     return App;
   };

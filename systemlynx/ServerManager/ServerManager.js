@@ -63,7 +63,7 @@ module.exports = function SystemLynxServerManager() {
 
     return new Promise((resolve) =>
       server.listen(port, () => {
-        console.log(`(SystemLynxService): ${route} --> Listening on ${host}:${port}`);
+        console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}`);
         moduleQueue.forEach(({ name, object, reserved_methods }) =>
           ServerManager.addModule(name, object, reserved_methods)
         );

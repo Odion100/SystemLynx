@@ -6,22 +6,22 @@ const {
   Client,
   Service,
   ServerManager,
-  AppFactory,
-  LoadBalancerFactory,
-  ServiceFactory,
-  ClientFactory,
-  HttpClientFactory,
-  ServerManagerFactory,
+  SystemLynxApp,
+  SystemLynxLoadBalancer,
+  SystemLynxService,
+  SystemLynxClient,
+  SystemLynxHttpClient,
+  SystemLynxServerManager,
 } = require("./index");
 
-describe("SystemLynx Factory functions", () => {
-  it("should return a factory functions for each SystemLynx abstraction", () => {
-    expect(AppFactory).to.be.a("function");
-    expect(LoadBalancerFactory).to.be.a("function");
-    expect(ServiceFactory).to.be.a("function");
-    expect(ClientFactory).to.be.a("function");
-    expect(HttpClientFactory).to.be.a("function");
-    expect(ServerManagerFactory).to.be.a("function");
+describe("SystemLynxSystemLynx  functions", () => {
+  it("should return aSystemLynx  functions for each SystemLynx abstraction", () => {
+    expect(SystemLynxApp).to.be.a("function");
+    expect(SystemLynxLoadBalancer).to.be.a("function");
+    expect(SystemLynxService).to.be.a("function");
+    expect(SystemLynxClient).to.be.a("function");
+    expect(SystemLynxHttpClient).to.be.a("function");
+    expect(SystemLynxServerManager).to.be.a("function");
   });
 
   it("should return an instance of each SystemLynx abstraction", () => {});
