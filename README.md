@@ -1,6 +1,6 @@
 # SystemLynx ![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg) ![JS 100%](https://img.shields.io/badge/JavaScript-100%25-green)
 
-SystemLynx is a framework for developing modular web APIs in NodeJS. It's a wrapper on top of ExpressJS and Socket.io. With SystemLynx, instead of creating a server with many endpoints, you can simply export objects from the server to the client application. Basically any objects added to a SystemLynx Service can be loaded and used by a SystemLynx Client.
+SystemLynx is a framework for developing modular web APIs in NodeJS. It's a wrapper on top of ExpressJS and Socket.io. With SystemLynx, instead of developing a server with endpoints, you can simply export objects from the server into the client application. Basically any objects added to a SystemLynx Service can be loaded and used by a SystemLynx Client.
 
 SystemLynx comes with the following objects that are used for web API development:
 
