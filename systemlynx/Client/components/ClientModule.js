@@ -4,14 +4,15 @@ const SocketDispatcher = require("./SocketDispatcher");
 module.exports = function SystemLynxClientModule(
   { methods, namespace, route },
   { port, host },
-  resetConnection
+  resetConnection,
+  systemContext
 ) {
   const events = {};
   const ClientModule = this || {};
 
   ClientModule.__setConnection = (host, port, route, namespace) => {
     ClientModule.__connectionData = () => ({ route, host, port });
-    SocketDispatcher.apply(ClientModule, [namespace, events]);
+    SocketDispatcher.apply(ClientModule, [namespace, events, systemContext]);
   };
 
   ClientModule.__setConnection(host, port, route, namespace);

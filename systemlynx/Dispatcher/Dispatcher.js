@@ -1,9 +1,12 @@
 "use strict";
-module.exports = function SystemLynxDispatcher(events = {}) {
+module.exports = function SystemLynxDispatcher(events = {}, systemContext) {
   const Dispatcher = this || {};
 
   Dispatcher.emit = (eventName, data, event) => {
-    if (events[eventName]) events[eventName].forEach((callback) => callback(data, event));
+    if (events[eventName])
+      events[eventName].forEach((callback) =>
+        callback.apply(systemContext, [data, event])
+      );
     return Dispatcher;
   };
 

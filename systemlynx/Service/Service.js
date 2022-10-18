@@ -1,27 +1,34 @@
 "use strict";
 const ServerManagerFactory = require("../ServerManager/ServerManager");
-const Dispatcher = require("../Dispatcher/Dispatcher");
+const SystemLynxDispatcher = require("../Dispatcher/Dispatcher");
 
-module.exports = function ServiceFactory({ defaultModule = {} } = {}) {
+module.exports = function ServiceFactory(systemContext = {}) {
   const ServerManager = ServerManagerFactory();
   const { startService, Server, WebSocket } = ServerManager;
-  const Service = { startService, Server, WebSocket, defaultModule };
+  const Service = { startService, Server, WebSocket };
 
   Service.module = function (name, constructor, reserved_methods = []) {
+    const exclude_methods = reserved_methods.concat(
+      Object.getOwnPropertyNames(systemContext)
+    );
+
     if (typeof constructor === "object" && constructor instanceof Object) {
-      ServerManager.addModule(name, constructor, reserved_methods);
-      return constructor;
+      const Module = SystemLynxDispatcher.apply({ ...constructor, ...systemContext }, [
+        undefined,
+        systemContext,
+      ]);
+      ServerManager.addModule(name, Module, exclude_methods);
+      return Module;
     }
 
     if (typeof constructor === "function") {
       if (constructor.constructor.name === "AsyncFunction")
         throw `[SystemLynx][Module][Error]: Module(name, constructor) function cannot receive an async function as the constructor`;
 
-      const Module = Dispatcher.apply({ ...Service.defaultModule });
-      const exclude_methods = [
-        ...reserved_methods,
-        ...Object.getOwnPropertyNames(Module),
-      ];
+      const Module = SystemLynxDispatcher.apply(systemContext, [
+        undefined,
+        systemContext,
+      ]);
       constructor.apply(Module, [ServerManager.Server(), ServerManager.WebSocket()]);
       ServerManager.addModule(name, Module, exclude_methods);
       return Module;

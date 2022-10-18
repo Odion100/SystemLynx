@@ -64,8 +64,8 @@ module.exports = function SystemLynxServerManager() {
     return new Promise((resolve) =>
       server.listen(port, () => {
         console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}`);
-        moduleQueue.forEach(({ name, object, reserved_methods }) =>
-          ServerManager.addModule(name, object, reserved_methods)
+        moduleQueue.forEach(({ name, Module, reserved_methods }) =>
+          ServerManager.addModule(name, Module, reserved_methods)
         );
         moduleQueue.length = 0;
         resolve(ServerManager);
@@ -73,15 +73,15 @@ module.exports = function SystemLynxServerManager() {
     );
   };
 
-  ServerManager.addModule = (name, object, reserved_methods = []) => {
+  ServerManager.addModule = (name, Module, reserved_methods = []) => {
     const { host, route, serviceUrl, staticRouting, useService, useREST, socketPort } =
       serverConfigurations;
 
-    if (!serviceUrl) return moduleQueue.push({ name, object, reserved_methods });
-    const methods = parseMethods(object, ["on", "emit", ...reserved_methods], useREST);
+    if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
+    const methods = parseMethods(Module, ["on", "emit", ...reserved_methods], useREST);
     const namespace = staticRouting ? name : shortId();
 
-    SocketEmitter.apply(object, [namespace, WebSocket]);
+    SocketEmitter.apply(Module, [namespace, WebSocket]);
 
     if (useService) {
       const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
@@ -92,7 +92,7 @@ module.exports = function SystemLynxServerManager() {
         name,
         methods,
       });
-      methods.forEach((method) => router.addService(object, path, method, name));
+      methods.forEach((method) => router.addService(Module, path, method, name));
     }
     if (useREST)
       methods.forEach((method) => {
@@ -101,7 +101,7 @@ module.exports = function SystemLynxServerManager() {
           case "put":
           case "post":
           case "delete":
-            router.addREST(object, `${route}/${name}`, method, name);
+            router.addREST(Module, `${route}/${name}`, method, name);
         }
       });
   };

@@ -3,7 +3,7 @@ const loadConnectionData = require("./components/loadConnectionData");
 const SocketDispatcher = require("./components/SocketDispatcher");
 const ClientModule = require("./components/ClientModule");
 
-module.exports = function SystemLynxClient() {
+module.exports = function SystemLynxClient(systemContext) {
   const Client = {};
   Client.loadedServices = {};
 
@@ -12,14 +12,14 @@ module.exports = function SystemLynxClient() {
       return Client.loadedServices[url];
 
     const connData = await loadConnectionData(url, options);
-    const Service = SocketDispatcher(connData.namespace);
+    const Service = SocketDispatcher(connData.namespace, undefined, systemContext);
     Client.loadedServices[url] = Service;
     if (options.name) Client[options.name] = Service;
 
     Service.resetConnection = async (cb) => {
       const { modules, host, port, namespace } = await loadConnectionData(url, options);
 
-      SocketDispatcher.apply(Service, [namespace]);
+      SocketDispatcher.apply(Service, [namespace, undefined, systemContext]);
 
       modules.forEach(({ namespace, route, name }) =>
         Service[name].__setConnection(host, port, route, namespace)
@@ -29,7 +29,13 @@ module.exports = function SystemLynxClient() {
     };
 
     connData.modules.forEach(
-      (mod) => (Service[mod.name] = ClientModule(mod, connData, Service.resetConnection))
+      (mod) =>
+        (Service[mod.name] = ClientModule(
+          mod,
+          connData,
+          Service.resetConnection,
+          systemContext
+        ))
     );
 
     Service.on("disconnect", Service.resetConnection);

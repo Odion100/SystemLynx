@@ -1,11 +1,14 @@
-const Client = require("../../Client/Client")();
-module.exports = ({ Services, App }) => {
+const SystemLynxClient = require("../../Client/Client");
+
+module.exports = ({ Services }, App, systemContext) => {
+  const Client = SystemLynxClient(systemContext);
+
   return Promise.all(
-    Services.map(serviceData => {
+    Services.map((serviceData) => {
       const { url, limit, wait, name, onLoad } = serviceData;
-      return new Promise(resolve => {
+      return new Promise((resolve) => {
         Client.loadService(url, { limit, wait })
-          .then(service => {
+          .then((service) => {
             serviceData.client = service;
             if (typeof onLoad === "function") {
               onLoad(serviceData.client);
@@ -17,7 +20,7 @@ module.exports = ({ Services, App }) => {
             );
             resolve();
           })
-          .catch(err => {
+          .catch((err) => {
             console.warn(err);
             App.emit("failed_connection", { err, ...serviceData });
             resolve();

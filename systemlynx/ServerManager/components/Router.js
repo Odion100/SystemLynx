@@ -36,8 +36,8 @@ module.exports = function SystemLynxRouter(server, config) {
     const presets = { serviceUrl, module_name, fn };
 
     const sendError = (error) => {
-      const status = error.status || 500;
-      const message = error.message || "Unexpected error";
+      const status = (error || {}).status || 500;
+      const message = (error || {}).message || "Unexpected error";
       const unhandledMessage = status === 500 ? "Unhandled error" : "Error";
       res.status(status).json({
         ...presets,
@@ -49,13 +49,13 @@ module.exports = function SystemLynxRouter(server, config) {
     };
 
     const sendResponse = (returnValue) => {
-      const status = returnValue.status || 200;
+      const status = (returnValue || {}).status || 200;
       if (status < 400) {
         res.status(status).json({
           ...presets,
           status,
           message:
-            returnValue.message ||
+            (returnValue || {}).message ||
             `[SystemLynx][response]: ${module_name}.${fn}(...) returned successfully`,
           returnValue,
         });

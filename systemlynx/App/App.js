@@ -1,22 +1,18 @@
 "use strict";
 const { isNode } = require("../../utils/ProcessChecker");
-const ServiceFactory = require("../Service/Service");
-const SystemObject = require("./components/SystemObject");
-const Dispatcher = require("../Dispatcher/Dispatcher");
+const SystemLynxService = require("../Service/Service");
+const SystemContext = require("./components/SystemContext");
+const SystemLynxDispatcher = require("../Dispatcher/Dispatcher");
 const initializeApp = require("./components/initializeApp");
 
 module.exports = function SystemLynxApp() {
-  const { on, emit } = Dispatcher();
-  const App = { emit };
-  const system = { Services: [], Modules: [], configurations: {}, App, routing: null };
-  const systemObject = SystemObject(system);
-  setTimeout(() => initializeApp(system), 0);
-
-  App.on = (name, callback) => on(name, callback.bind(systemObject));
+  const system = { Services: [], Modules: [], configurations: {}, routing: null };
+  const systemContext = SystemContext(system);
+  const App = SystemLynxDispatcher(undefined, systemContext);
+  setTimeout(() => initializeApp(system, App, systemContext), 0);
 
   if (isNode) {
-    system.Service = ServiceFactory();
-    system.Service.defaultModule = systemObject;
+    system.Service = SystemLynxService(systemContext);
 
     App.startService = (options) => {
       system.routing = options;
@@ -50,7 +46,7 @@ module.exports = function SystemLynxApp() {
 
   App.config = (__constructor) => {
     if (typeof __constructor === "function")
-      system.configurations = { __constructor, module: SystemObject(system) };
+      system.configurations = { __constructor, module: SystemContext(system) };
     else
       throw Error(
         "[SystemLynx][App][Error]: App.config(...) methods requires a constructor function as its first parameter."

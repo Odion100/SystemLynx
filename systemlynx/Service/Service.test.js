@@ -7,7 +7,7 @@ describe("SystemLynxService", () => {
     const Service = ServiceFactory();
     expect(Service)
       .to.be.an("object")
-      .that.has.all.keys("startService", "module", "Server", "WebSocket", "defaultModule")
+      .that.has.all.keys("startService", "module", "Server", "WebSocket")
       .that.respondsTo("startService")
       .that.respondsTo("module")
       .that.respondsTo("Server")
@@ -123,9 +123,11 @@ describe("Service.module(object)", () => {
 
     expect(mod)
       .to.be.an("Object")
-      .that.has.all.keys("action1", "action2")
+      .that.has.all.keys("action1", "action2", "on", "emit")
       .that.respondsTo("action1")
-      .that.respondsTo("action2");
+      .that.respondsTo("action2")
+      .that.respondsTo("on")
+      .that.respondsTo("emit");
   });
   it("should 'Serve' Service connection data created using an object as the constructor", async () => {
     await Service.startService({ route, port });

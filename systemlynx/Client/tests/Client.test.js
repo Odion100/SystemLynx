@@ -119,27 +119,32 @@ describe("Service", () => {
 
   it("should be able to receive events emitted from the backend Client", async () => {
     const eventName = "testing";
+    const route = "test-service";
+    const port = "8980";
+    const url = `http://localhost:${port}/${route}`;
+    const Service = ServiceFactory();
     const eventTester = Service.module("eventTester", function () {
-      const eventTester = this;
-      eventTester.sendEvent = () => eventTester.emit(eventName, { testPassed: true });
+      this.sendEvent = () => this.emit(eventName, { testPassed: true });
     });
+    await Service.startService({ route, port });
 
     const Client = ClientFactory();
+
     const buAPI = await Client.loadService(url);
+    setTimeout(() => eventTester.emit(eventName, { testPassed: true }), 500);
 
-    buAPI.eventTester.on(eventName, (data, event) => {
-      console.log("Ladies and gentleman... mission accomplish!");
-      // console.log(data);
-      // console.log(event);
-      expect(data).to.deep.equal({ testPassed: true });
-      expect(event).to.be.an("object").that.has.all.keys("id", "name", "data", "type");
-      expect(event.name).to.equal("testing");
-      expect(event.data).to.deep.equal({ testPassed: true });
-      expect(event.id).to.be.a("string");
-      expect(event.type).to.equal("WebSocket");
+    await new Promise((resolve) => {
+      buAPI.eventTester.on(eventName, (data, event) => {
+        console.log("Ladies and gentleman... mission accomplish!");
+        expect(data).to.deep.equal({ testPassed: true });
+        expect(event).to.be.an("object").that.has.all.keys("id", "name", "data", "type");
+        expect(event.name).to.equal(eventName);
+        expect(event.data).to.deep.equal({ testPassed: true });
+        expect(event.id).to.be.a("string");
+        expect(event.type).to.equal("WebSocket");
+        resolve();
+      });
     });
-
-    eventTester.emit(eventName, { testPassed: true });
   });
 
   it("should be able to send REST http requests", async () => {
@@ -193,8 +198,6 @@ describe("Service", () => {
       route,
       port,
       host,
-      useReturnValues: true,
-      useCallbacks: false,
     });
     const Client = ClientFactory();
     const { AsyncMath } = await Client.loadService(url);

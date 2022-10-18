@@ -1,7 +1,7 @@
 const loadModules = require("./loadModules");
 const loadServices = require("./loadServices");
 
-module.exports = async function initApp(system) {
+module.exports = async function initApp(system, App, systemContext) {
   let configComplete = false;
   const continuationERROR = () => {
     if (!configComplete)
@@ -16,7 +16,7 @@ module.exports = async function initApp(system) {
   };
 
   try {
-    await loadServices(system);
+    await loadServices(system, App, systemContext);
   } catch (err) {
     throw `[SystemLynx][App][Error]: Initialization Error - failed to load all services`;
   }
@@ -26,8 +26,8 @@ module.exports = async function initApp(system) {
     system.configurations.__constructor.apply(system.configurations.module, [
       () => {
         configComplete = true;
-        loadModules(system);
+        loadModules(system, App);
       },
     ]);
-  } else loadModules(system);
+  } else loadModules(system, App);
 };

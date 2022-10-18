@@ -271,7 +271,6 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "Service",
             "Modules",
             "configurations",
-            "App",
             "routing"
           );
         resolve();
@@ -279,7 +278,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
     );
   });
 
-  it("should be able to use App.config(constructor) to construct a configuartion module", async () => {
+  it("should be able to use App.config(constructor) to construct a configuration module", async () => {
     const App = AppFactory();
 
     App.module("mod", function () {
@@ -311,7 +310,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
   });
 });
 
-describe("SystemObjects", () => {
+describe("SystemContext", () => {
   it("should be able to use this.useModule and this.useService within modules and Module", () => {
     const App = AppFactory();
     App.module("mod1", function () {
@@ -333,6 +332,7 @@ describe("SystemObjects", () => {
         const config = this.useConfig();
         expect(mod1.testPassed).to.equal(true);
         expect(config.configPassed).to.equal(true);
+        this.testPassed = true;
       })
       .config(function (next) {
         expect(this)
@@ -353,7 +353,68 @@ describe("SystemObjects", () => {
         const config = this.useConfig();
         expect(mod1.testPassed).to.equal(true);
         expect(config.configPassed).to.equal(true);
+      })
+      .on("ready", function () {
+        expect(this)
+          .to.be.an("object")
+          .that.respondsTo("useService")
+          .that.respondsTo("useModule")
+          .that.respondsTo("useConfig");
+        const mod2 = this.useModule("mod2");
+        const config = this.useConfig();
+        expect(mod2.testPassed).to.equal(true);
+        expect(config.configPassed).to.equal(true);
       });
     return new Promise((resolve) => App.on("ready", () => resolve()));
+  });
+  it("[SystemLynx][App][Client][on] should have access to systemContext during event callbacks.", async () => {
+    const AppBackend = AppFactory();
+    const eventName = "testing-this";
+    const _route = "test-service";
+    const _port = "8900";
+    const _url = `http://localhost:${_port}/${_route}`;
+    AppBackend.module("EventTesterModule", function () {
+      this.sendEvent = () => this.emit(eventName, { testPassed: true });
+
+      //testing local event callback context
+      this.on(eventName, function () {
+        console.log("Aww man... here we go again!", this);
+        expect(this)
+          .to.be.an("object")
+          .that.respondsTo("useService")
+          .that.respondsTo("useModule")
+          .that.respondsTo("useConfig");
+      });
+    });
+    await AppBackend.startService({ route: _route, port: _port });
+
+    const AppClient = AppFactory();
+    const route = "test-service";
+    const port = "8901";
+
+    AppClient.startService({ route, port }).loadService("buAPI", _url);
+    await new Promise((resolve) =>
+      AppClient.on("ready", function () {
+        const { EventTesterModule } = this.useService("buAPI");
+        EventTesterModule.on(eventName, function (data, event) {
+          console.log("Ladies and gentleman... another one!");
+          expect(this)
+            .to.be.an("object")
+            .that.respondsTo("useService")
+            .that.respondsTo("useModule")
+            .that.respondsTo("useConfig");
+          expect(data).to.deep.equal({ testPassed: true });
+          expect(event)
+            .to.be.an("object")
+            .that.has.all.keys("id", "name", "data", "type");
+          expect(event.name).to.equal(eventName);
+          expect(event.data).to.deep.equal({ testPassed: true });
+          expect(event.id).to.be.a("string");
+          expect(event.type).to.equal("WebSocket");
+          resolve();
+        });
+        EventTesterModule.sendEvent(eventName);
+      })
+    );
   });
 });
