@@ -1,12 +1,13 @@
 "use strict";
 const { isNode } = require("../../utils/ProcessChecker");
 const SystemLynxService = require("../Service/Service");
-const SystemContext = require("./components/SystemContext");
 const SystemLynxDispatcher = require("../Dispatcher/Dispatcher");
 const initializeApp = require("./components/initializeApp");
+const SystemContext = require("../utils/SystemContext");
+const System = require("../utils/System");
 
 module.exports = function SystemLynxApp() {
-  const system = { Services: [], Modules: [], configurations: {}, routing: null };
+  const system = new System();
   const systemContext = SystemContext(system);
   const App = SystemLynxDispatcher(undefined, systemContext);
   setTimeout(() => initializeApp(system, App, systemContext), 0);
