@@ -69,9 +69,18 @@ describe("LoadBalancer.clones (Module)", () => {
   it("should be a Service object with additional methods for LoadBalancing", () => {
     expect(LoadBalancer.clones)
       .to.be.an("Object")
-      .that.has.all.keys("on", "emit", "register", "dispatch", "assignDispatch", "clones")
+      .that.has.all.keys(
+        "on",
+        "emit",
+        "$emit",
+        "register",
+        "dispatch",
+        "assignDispatch",
+        "clones"
+      )
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("$emit")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")
       .that.respondsTo("assignDispatch")

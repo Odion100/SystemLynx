@@ -6,14 +6,15 @@ module.exports = function SocketEmitter(namespace, WebSocket) {
     (this || {}).on && (this || {}).emit ? this : SystemLynxDispatcher.apply(this);
 
   const socket = WebSocket.of(`/${namespace}`);
-  const emit = Emitter.emit;
+  //use $emit to emit events locally only
+  Emitter.$emit = Emitter.emit;
 
   Emitter.emit = (name, data) => {
     const id = shortid();
     const type = "WebSocket";
     socket.emit("dispatch", { id, name, data, type });
     //emit the same event locally
-    emit(name, data);
+    Emitter.$emit(name, data);
   };
   return Emitter;
 };
