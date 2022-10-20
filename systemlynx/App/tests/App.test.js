@@ -1,11 +1,11 @@
 const { expect } = require("chai");
-const AppFactory = require("../App");
+const SystemLynxApp = require("../App");
 const HttpClient = require("../../HttpClient/HttpClient")();
-const ServiceFactory = require("../../Service/Service");
+const SystemLynxService = require("../../Service/Service");
 
-describe("App Factory", () => {
+describe("SystemLynxApp()", () => {
   it("should return a SystemLynx App", () => {
-    const App = AppFactory();
+    const App = SystemLynxApp();
 
     expect(App)
       .to.be.an("object")
@@ -29,7 +29,7 @@ describe("App Factory", () => {
 });
 describe("App: Loading Services", () => {
   it("should be able to use App.loadService(str_url) to load as hosted Service", async () => {
-    const Service = ServiceFactory();
+    const Service = SystemLynxService();
     const route = "test-service";
     const port = "8503";
 
@@ -41,7 +41,7 @@ describe("App: Loading Services", () => {
     await Service.startService({ route, port });
 
     await new Promise((resolve) => {
-      const App = AppFactory();
+      const App = SystemLynxApp();
       App.loadService("test", `http://localhost:${port}/${route}`).on(
         "ready",
         (system) => {
@@ -61,7 +61,7 @@ describe("App: Loading Services", () => {
   });
 
   it("should be able to use App.loadService(...).onLoad(handler) to fire a callback when the Service connects", async () => {
-    const Service = ServiceFactory();
+    const Service = SystemLynxService();
     const route = "test-service";
     const port = "8422";
     const url = `http://localhost:${port}/${route}`;
@@ -74,7 +74,7 @@ describe("App: Loading Services", () => {
     await Service.startService({ route, port });
 
     await new Promise((resolve) => {
-      const App = AppFactory();
+      const App = SystemLynxApp();
       App.loadService("test", url).onLoad((test) => {
         expect(test)
           .to.be.an("object")
@@ -89,7 +89,7 @@ describe("App: Loading Services", () => {
   });
 
   it('should use App.on("service_loaded[:name]", callback) to fire when a Service has loaded', async () => {
-    const Service = ServiceFactory();
+    const Service = SystemLynxService();
     const route = "test-service";
     const port = "8423";
     const url = `http://localhost:${port}/${route}`;
@@ -101,7 +101,7 @@ describe("App: Loading Services", () => {
     await Service.startService({ route, port });
 
     await new Promise((resolve) => {
-      const App = AppFactory();
+      const App = SystemLynxApp();
       App.loadService("test", url)
         .on("service_loaded", (test) => {
           expect(test)
@@ -124,7 +124,7 @@ describe("App: Loading Services", () => {
   });
 
   it("should be accessible to SystemObjects via the module.useService method", async () => {
-    const Service = ServiceFactory();
+    const Service = SystemLynxService();
     const route = "test-service";
     const port = "8442";
     const url = `http://localhost:${port}/${route}`;
@@ -137,7 +137,7 @@ describe("App: Loading Services", () => {
     await Service.startService({ route, port });
 
     await new Promise((resolve) => {
-      const App = AppFactory();
+      const App = SystemLynxApp();
       App.loadService("test", url)
         .module("module_name", function () {
           const test = this.useService("test");
@@ -156,7 +156,7 @@ describe("App: Loading Services", () => {
 
 describe("App SystemObjects: Initializing Modules,  Modules and configurations", () => {
   it("should be able to use App.module to initialize a module", async () => {
-    const App = AppFactory();
+    const App = SystemLynxApp();
     return new Promise((resolve) =>
       App.module("test", function () {
         expect(this)
@@ -181,7 +181,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
     );
   });
   it("should be able to use App.startService to start as Service", async () => {
-    const App = AppFactory();
+    const App = SystemLynxApp();
     const route = "test-service";
     const port = "8493";
     const url = `http://localhost:${port}/${route}`;
@@ -207,7 +207,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
     expect(connData.serviceUrl).to.equal(url);
   });
   it("should be able to use App.module to add a hosted Module to the Service", async () => {
-    const App = AppFactory();
+    const App = SystemLynxApp();
     const route = "test-service";
     const port = "8494";
     const url = `http://localhost:${port}/${route}`;
@@ -252,7 +252,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
   });
 
   it('should be able to use App.on("ready", callback) fire a callback when App initialization is complete', async () => {
-    const App = AppFactory();
+    const App = SystemLynxApp();
 
     App.module("mod", function () {
       this.test = () => {};
@@ -279,7 +279,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
   });
 
   it("should be able to use App.config(constructor) to construct a configuration module", async () => {
-    const App = AppFactory();
+    const App = SystemLynxApp();
 
     App.module("mod", function () {
       this.test = () => {};
@@ -312,7 +312,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
 
 describe("SystemContext", () => {
   it("should be able to use this.useModule and this.useService within modules and Module", () => {
-    const App = AppFactory();
+    const App = SystemLynxApp();
     App.module("mod1", function () {
       expect(this)
         .to.be.an("object")
@@ -368,7 +368,7 @@ describe("SystemContext", () => {
     return new Promise((resolve) => App.on("ready", () => resolve()));
   });
   it("[SystemLynx][App][Client][on] should have access to systemContext during event callbacks.", async () => {
-    const AppBackend = AppFactory();
+    const AppBackend = SystemLynxApp();
     const eventName = "testing-this";
     const _route = "test-service";
     const _port = "8900";
@@ -388,7 +388,7 @@ describe("SystemContext", () => {
     });
     await AppBackend.startService({ route: _route, port: _port });
 
-    const AppClient = AppFactory();
+    const AppClient = SystemLynxApp();
     const route = "test-service";
     const port = "8901";
 

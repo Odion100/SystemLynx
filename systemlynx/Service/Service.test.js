@@ -1,10 +1,10 @@
 const { expect } = require("chai");
 const request = require("request");
-const ServiceFactory = require("./Service");
+const SystemLynxService = require("./Service");
 
 describe("SystemLynxService", () => {
   it("should return a new instance of a Service", () => {
-    const Service = ServiceFactory();
+    const Service = SystemLynxService();
     expect(Service)
       .to.be.an("object")
       .that.has.all.keys("startService", "module", "Server", "WebSocket")
@@ -17,7 +17,7 @@ describe("SystemLynxService", () => {
 
 describe("Service factory", () => {
   it("should be able to use Service.startService to initiate a ServerManager instance that hosts the Service Connection Data", async () => {
-    const Service = ServiceFactory();
+    const Service = SystemLynxService();
     const route = "/testService";
     const port = 5500;
     const url = `http://localhost:${port}${route}`;
@@ -49,7 +49,7 @@ describe("Service factory", () => {
 });
 
 describe("Service.module(constructor)", () => {
-  const Service = ServiceFactory();
+  const Service = SystemLynxService();
   const port = 6542;
   const route = "test/service";
   const url = `http://localhost:${port}/${route}`;
@@ -111,7 +111,7 @@ describe("Service.module(constructor)", () => {
 });
 
 describe("Service.module(object)", () => {
-  const Service = ServiceFactory();
+  const Service = SystemLynxService();
   const port = 6543;
   const route = "test/service2";
   const url = `http://localhost:${port}/${route}`;

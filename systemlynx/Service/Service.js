@@ -1,9 +1,9 @@
 "use strict";
-const ServerManagerFactory = require("../ServerManager/ServerManager");
+const SystemLynxServerManager = require("../ServerManager/ServerManager");
 const SystemLynxDispatcher = require("../Dispatcher/Dispatcher");
 
-module.exports = function ServiceFactory(systemContext = {}) {
-  const ServerManager = ServerManagerFactory();
+module.exports = function SystemLynxService(systemContext = {}) {
+  const ServerManager = SystemLynxServerManager();
   const { startService, Server, WebSocket } = ServerManager;
   const Service = { startService, Server, WebSocket };
 

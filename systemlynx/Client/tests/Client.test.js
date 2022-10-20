@@ -1,14 +1,14 @@
 const { expect } = require("chai");
-const ClientFactory = require("../Client");
-const ServiceFactory = require("../../Service/Service");
-const Service = ServiceFactory();
+const SystemLynxClient = require("../Client");
+const SystemLynxService = require("../../Service/Service");
+const Service = SystemLynxService();
 const port = 6757;
 const route = "service-test";
 const url = `http://localhost:${port}/${route}`;
 
-describe("Client Factory", () => {
+describe("SystemLynxClient()", () => {
   it("should return a SystemLynx Client", () => {
-    const Client = ClientFactory();
+    const Client = SystemLynxClient();
     expect(Client)
       .to.be.an("object")
       .that.has.property("loadService")
@@ -36,7 +36,7 @@ describe("Client", () => {
     );
 
     await Service.startService({ route, port });
-    const Client = ClientFactory();
+    const Client = SystemLynxClient();
     const buAPI = await Client.loadService(url);
 
     expect(buAPI)
@@ -74,7 +74,7 @@ describe("Client", () => {
 
 describe("Service", () => {
   it("should be able to call methods from the frontend client to the backend Module", async () => {
-    const Client = ClientFactory();
+    const Client = SystemLynxClient();
     const buAPI = await Client.loadService(url);
 
     const results = await buAPI.orders.action1({ code: 3 });
@@ -89,7 +89,7 @@ describe("Service", () => {
     });
   });
   it("should be able to send multiple arguments to the backend Module", async () => {
-    const Client = ClientFactory();
+    const Client = SystemLynxClient();
     const buAPI = await Client.loadService(url);
     const arg1 = 4,
       arg2 = 5,
@@ -107,7 +107,7 @@ describe("Service", () => {
   });
 
   it("should be able to send no arguments and use a promise", async () => {
-    const Client = ClientFactory();
+    const Client = SystemLynxClient();
     const buAPI = await Client.loadService(url);
     const results = await buAPI.orders.noArgTest();
 
@@ -122,13 +122,13 @@ describe("Service", () => {
     const route = "test-service";
     const port = "8980";
     const url = `http://localhost:${port}/${route}`;
-    const Service = ServiceFactory();
+    const Service = SystemLynxService();
     const eventTester = Service.module("eventTester", function () {
       this.sendEvent = () => this.emit(eventName, { testPassed: true });
     });
     await Service.startService({ route, port });
 
-    const Client = ClientFactory();
+    const Client = SystemLynxClient();
 
     const buAPI = await Client.loadService(url);
     setTimeout(() => eventTester.emit(eventName, { testPassed: true }), 500);
@@ -148,8 +148,8 @@ describe("Service", () => {
   });
 
   it("should be able to send REST http requests", async () => {
-    const Client = ClientFactory();
-    const Service = ServiceFactory();
+    const Client = SystemLynxClient();
+    const Service = SystemLynxService();
     const route = "rest-tester";
     const port = "8492";
     const url = `http://localhost:${port}/${route}`;
@@ -183,7 +183,7 @@ describe("Service", () => {
   });
 
   it("should be able to use 'useReturnValue' configuration option to enable synchronous return values from Module methods", async () => {
-    const service = ServiceFactory();
+    const service = SystemLynxService();
     const route = "sync/test";
     const port = 4920;
     const host = "localhost";
@@ -199,7 +199,7 @@ describe("Service", () => {
       port,
       host,
     });
-    const Client = ClientFactory();
+    const Client = SystemLynxClient();
     const { AsyncMath } = await Client.loadService(url);
     const results = await AsyncMath.max(10, 2);
     expect(results).to.equal(10);

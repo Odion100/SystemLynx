@@ -1,11 +1,11 @@
 const { expect } = require("chai");
 const LoadBalancer = require("../LoadBalancer")();
-const ServiceFactory = require("../../Service/Service");
+const SystemLynxService = require("../../Service/Service");
 const HttpClient = require("../../HttpClient/HttpClient")();
 const lbPort = 5030;
 const route = "loadbalancer";
 
-describe("LoadBalancerFactory", () => {
+describe("LoadBalancer()", () => {
   it("should return a SystemLynx LoadBalancer", () => {
     expect(LoadBalancer)
       .to.be.an("object")
@@ -80,7 +80,7 @@ describe("LoadBalancer.clones (Module)", () => {
   });
 
   it("should be able to use clones.register(connData, callback) method to host connection", async () => {
-    const Service = ServiceFactory();
+    const Service = SystemLynxService();
     const { route, port, host } = test_service1;
     await Service.startService({ route, port, host });
     LoadBalancer.clones.register({ route, port, host }, () => {});
@@ -106,8 +106,8 @@ describe("LoadBalancer.clones (Module)", () => {
 
   it("should be able to manager the routing to multiple clones of the same Service", async () => {
     const { route, port1, port2, host } = test_service2;
-    const Clone1 = ServiceFactory();
-    const Clone2 = ServiceFactory();
+    const Clone1 = SystemLynxService();
+    const Clone2 = SystemLynxService();
     await Clone1.startService({ route, port: port1, host });
     await Clone2.startService({ route, port: port2, host });
     LoadBalancer.clones.register({ route, port: port1, host }, () => {});
