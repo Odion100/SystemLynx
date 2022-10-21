@@ -70,6 +70,14 @@ Welcome to the docs! Following is a list of the objects used and created when de
 
 ---
 
+## Service
+
+In SystemLynx a **Service** is a class used to host objects that can be later loaded into a client application using a SystemLynx **Client.** Get a handle on a SystemLynx **Service** by de-structuring the SystemLynx export.
+
+```javascript
+const { Service } = require(“systemlynx”)
+```
+
 ## Service.module(name, constructor)
 
 Use the `Service.module(name, constructor/object)` method to create a **ServerModule**, which is an object that is hosted by a **SystemLynx Service**. This will allows you to later load an instance of that object into a client application. The **Service.module(name, constructor)** method takes the (string) name assigned to the object as the first argument, and the object itself, or a constructor function, as the second argument, and will return the constructed **ServerModule.** See the examples below.
