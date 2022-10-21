@@ -51,24 +51,75 @@ Welcome to the docs! Following is a list of the objects used and created when de
 ---
 
 <details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md">ClientModule</a></b></summary>
+   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md">ServerModule</a></b></summary>
     
-- [**[created_method]([args...] [,callback])**]() 
-- [**on(name, constructor [,options])**]() 
-- [**emit()**]()
+- [**...constructedMethods**]()
+- [**on(name, callback)**]() 
+- [**emit(name, data)**]()
 
 </details>
 
 <details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md">module</a></b></summary>
+   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md">ClientModule</a></b></summary>
     
-- [**[created_method]([args...] [,callback])**]() 
-- [**on(name, constructor [,options])**]() 
-- [**emit()**]()
+- [**...loadedMethods**]() 
+- [**on(name, callback)**]() 
+- [**emit(name, data)**]()
 
 </details>
 
 ---
+
+## Service.module(name, constructor)
+
+Use the `Service.module(name, constructor/object)` method to create a **ServerModule**, which is an object that is hosted by a **SystemLynx Service**. This will allows you to later load an instance of that object into a client application. The **Service.module(name, constructor)** method takes the (string) name assigned to the object as the first argument, and the object itself, or a constructor function, as the second argument, and will return the constructed **ServerModule.** See the examples below.
+
+```javascript
+const { Service } = require("systemlynx");
+
+const UsersConstructor = {
+  add:function(data) {
+   return { message: "You have successfully called Users.add(...)" };
+  }
+};
+constr OrdersConstructor = function () {
+  const Orders = this;
+
+  Orders.find = function (arg1, arg2) {
+    return { message: "You have successfully called the Orders.find(...)" };
+  };
+}
+
+const Users = Service.module("Users", UsersConstructor);
+
+const Orders = Service.module("Orders", OrdersConstructor);
+```
+
+## Service.startService(options)
+
+Use the `Service.startService(options)` method to setup hosting and routing for the **Service**. Calling this method will start an **ExpressJS** Server and a **Socket.io** WebSocket Server, and allow the modules created by the **Service** to be loaded into a client application. This method returns a promise that will resolve once the Express server is running.
+
+```javascript
+const { Service } = require("systemlynx");
+const route = "my-route/whatever";
+const port = 8100;
+const host = "localhost";
+
+const promise = Service.startService({ route, port, host });
+```
+
+Following is a list of options that can be passed to the **Service.startService(options)** method.
+
+| Name          |  Type   | O/R/C | Description                                                                                                                                            |
+| :------------ | :-----: | :---: | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| route         | string  |   R   | The route from which the service can be loaded.                                                                                                        |
+| port          | number  |   R   | The port on which to start the Express server.                                                                                                         |
+| host          | string  |   O   | The host from which the **Service** can be reached.                                                                                                    |
+| socketPort    | string  |   R   | The port on which to start the Socket.io Websocket server. <br/><br/> Default value : **_random for digit number_**                                    |
+| useRest       | boolean |   O   | When this is true a RESTful route will be created for any **ServerModule** method which is named after a REST method <br/><br/> Default value: `false` |
+| useService    | boolean |   O   | The route from which the service can be loaded.                                                                                                        |
+| staticRouting | boolean |   O   | The route from which the service can be loaded.                                                                                                        |
+| middleware    | string  |   R   | The route from which the service can be loaded.                                                                                                        |
 
 ## App
 
