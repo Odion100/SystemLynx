@@ -57,7 +57,7 @@ Service.module("Orders", function () {
   const Orders = this;
 
   Orders.find = async function (arg1, arg2) {
-    console.log(data);
+    console.log(arg1, arg2);
     return { message: "You have successfully called the Orders.find method" };
   };
 });
@@ -82,8 +82,8 @@ Service.module("Users", Users);
 Service.module("Orders", function () {
   const Orders = this;
 
-  Orders.find = function (arg1, arg2) {
-    console.log(data);
+  Orders.find = async function (arg1, arg2) {
+    console.log(arg1, arg2);
     return { message: "You have successfully called the Orders.find method" };
   };
 });
@@ -165,8 +165,8 @@ Service.module("Users", Users);
 Service.module("Orders", function () {
   const Orders = this;
 
-  Orders.find = function (arg1, arg2) {
-    console.log(data);
+  Orders.find = async function (arg1, arg2) {
+    console.log(arg1, arg2);
     return { message: "You have successfully called the Orders.find method" };
   };
 });
