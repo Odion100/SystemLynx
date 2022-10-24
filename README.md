@@ -8,7 +8,7 @@ SystemLynx comes with the following objects that are used for web app developmen
 const { App, Service, Client, LoadBalancer } = require("systemlynx");
 ```
 
-Call `require("systemlynx")` and de-concatenate from the object it returns. The main abstractions used for client-to-server interactions are the following:
+Call `require("systemlynx")` and destructrue from the object it returns. The main abstractions used for client-to-server interactions are the following:
 
 - **Service** - Used to create and host objects that can be loaded and used by a SystemLynx Client.
 - **Client** - Used in a client application to load a **Service**, which contains all the objects added to the **Service**.
