@@ -3,12 +3,12 @@ const { isNode } = require("../../utils/ProcessChecker");
 const SystemLynxService = require("../Service/Service");
 const SystemLynxDispatcher = require("../Dispatcher/Dispatcher");
 const initializeApp = require("./components/initializeApp");
-const SystemContext = require("../utils/SystemContext");
+const SystemLynxContext = require("../utils/SystemContext");
 const System = require("../utils/System");
 
 module.exports = function SystemLynxApp() {
   const system = new System();
-  const systemContext = SystemContext(system);
+  const systemContext = SystemLynxContext(system);
   const App = SystemLynxDispatcher(undefined, systemContext);
   setTimeout(() => initializeApp(system, App, systemContext), 0);
 
@@ -21,21 +21,13 @@ module.exports = function SystemLynxApp() {
     };
 
     App.module = (name, __constructor) => {
-      system.Modules.push({
-        name,
-        __constructor,
-      });
+      system.Modules.push({ name, __constructor });
       return App;
     };
   }
 
   App.loadService = (name, url) => {
-    system.Services.push({
-      name,
-      url,
-      onLoad: null,
-      client: {},
-    });
+    system.Services.push({ name, url, onLoad: null, client: {} });
     return App;
   };
 
@@ -47,7 +39,7 @@ module.exports = function SystemLynxApp() {
 
   App.config = (__constructor) => {
     if (typeof __constructor === "function")
-      system.configurations = { __constructor, module: SystemContext(system) };
+      system.configurations = { __constructor, module: SystemLynxContext(system) };
     else
       throw Error(
         "[SystemLynx][App][Error]: App.config(...) methods requires a constructor function as its first parameter."
