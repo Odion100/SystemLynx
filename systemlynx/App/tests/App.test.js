@@ -13,6 +13,7 @@ describe("SystemLynxApp()", () => {
         "module",
         "on",
         "emit",
+        "use",
         "startService",
         "loadService",
         "onLoad",
@@ -21,6 +22,7 @@ describe("SystemLynxApp()", () => {
       .that.respondsTo("module")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("use")
       .that.respondsTo("startService")
       .that.respondsTo("loadService")
       .that.respondsTo("onLoad")
@@ -309,7 +311,38 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
     );
   });
 });
+describe("Use App.use(SystemLynxPlugin), to initializing Modules, and load Services", () => {
+  it("should allow for adding new modules and services before app initialization", async () => {
+    const Service = SystemLynxService();
+    const route = "test-service";
+    const port = "8520";
+    const pluginUrl = `http://localhost:${port}/${route}`;
+    Service.module("mod", function () {
+      this.test = () => {};
+      this.test2 = () => {};
+    });
+    await Service.startService({ route, port });
 
+    const plugin = (App, system) => {
+      App.loadService("PluginService", pluginUrl);
+      App.module("plugin", { testMethod: (data) => data });
+    };
+    await new Promise((resolve) => {
+      const App = SystemLynxApp();
+      App.module("testModule", { testFunction: () => data })
+        .use(plugin)
+        .on("ready", (system) => {
+          expect(system.Services).to.have.lengthOf(1);
+          expect(system.Services[0]).to.be.an("object");
+          expect(system.Services[0]).to.have.property("name", "PluginService");
+          expect(system.Services[0]).to.have.property("url", pluginUrl);
+          expect(system.Modules).to.have.lengthOf(2);
+          expect(system.Modules[1]).to.have.property("name", "plugin");
+          resolve();
+        });
+    });
+  });
+});
 describe("SystemContext", () => {
   it("should be able to use this.useModule and this.useService within modules and Module", () => {
     const App = SystemLynxApp();

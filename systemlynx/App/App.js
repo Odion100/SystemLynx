@@ -10,7 +10,13 @@ module.exports = function SystemLynxApp() {
   const system = new System();
   const systemContext = SystemLynxContext(system);
   const App = SystemLynxDispatcher(undefined, systemContext);
-  setTimeout(() => initializeApp(system, App, systemContext), 0);
+  const plugins = [];
+  setTimeout(() => {
+    plugins.forEach((plugin) => {
+      if (typeof plugin === "function") plugin.apply({}, [App, system]);
+    });
+    initializeApp(system, App, systemContext);
+  }, 0);
 
   if (isNode) {
     system.Service = SystemLynxService(systemContext);
@@ -47,5 +53,9 @@ module.exports = function SystemLynxApp() {
     return App;
   };
 
+  App.use = (plugin) => {
+    plugins.push(plugin);
+    return App;
+  };
   return App;
 };

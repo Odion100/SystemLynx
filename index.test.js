@@ -35,6 +35,7 @@ describe("SystemLynx Objects", () => {
         "module",
         "on",
         "emit",
+        "use",
         "startService",
         "loadService",
         "onLoad",
@@ -43,6 +44,7 @@ describe("SystemLynx Objects", () => {
       .that.respondsTo("module")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("use")
       .that.respondsTo("startService")
       .that.respondsTo("loadService")
       .that.respondsTo("onLoad")
