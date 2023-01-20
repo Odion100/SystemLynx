@@ -130,7 +130,7 @@ describe("LoadBalancer.clones (Module)", () => {
     expect(connData2.serviceUrl).to.equal(`http://localhost:${port2}/${route}`);
   });
 
-  it("should be able to manage the route of multiple clones of multiple Services. aka Service Discovery", async () => {
+  it("should be able to manage the route of multiple clones of multiple services. aka Service Discovery", async () => {
     const route1 = test_service1.route;
     const route2 = test_service2.route;
     const url1 = `http://localhost:${lbPort}/${route1}`;

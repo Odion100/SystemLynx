@@ -47,9 +47,9 @@ describe("App: Loading Services", () => {
       App.loadService("test", `http://localhost:${port}/${route}`).on(
         "ready",
         (system) => {
-          expect(system.Services[0]).to.be.an("object");
+          expect(system.services[0]).to.be.an("object");
 
-          expect(system.Services[0].client)
+          expect(system.services[0].client)
             .to.be.an("object")
             .that.has.all.keys("emit", "on", "resetConnection", "disconnect", "mod")
             .that.respondsTo("emit")
@@ -269,9 +269,9 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
         expect(system)
           .to.be.an("object")
           .that.has.all.keys(
-            "Services",
+            "services",
             "Service",
-            "Modules",
+            "modules",
             "configurations",
             "routing"
           );
@@ -326,18 +326,19 @@ describe("Use App.use(SystemLynxPlugin), to initializing Modules, and load Servi
     const plugin = (App, system) => {
       App.loadService("PluginService", pluginUrl);
       App.module("plugin", { testMethod: (data) => data });
+      console.log(system);
     };
     await new Promise((resolve) => {
       const App = SystemLynxApp();
       App.module("testModule", { testFunction: () => data })
         .use(plugin)
         .on("ready", (system) => {
-          expect(system.Services).to.have.lengthOf(1);
-          expect(system.Services[0]).to.be.an("object");
-          expect(system.Services[0]).to.have.property("name", "PluginService");
-          expect(system.Services[0]).to.have.property("url", pluginUrl);
-          expect(system.Modules).to.have.lengthOf(2);
-          expect(system.Modules[1]).to.have.property("name", "plugin");
+          expect(system.services).to.have.lengthOf(1);
+          expect(system.services[0]).to.be.an("object");
+          expect(system.services[0]).to.have.property("name", "PluginService");
+          expect(system.services[0]).to.have.property("url", pluginUrl);
+          expect(system.modules).to.have.lengthOf(2);
+          expect(system.modules[1]).to.have.property("name", "plugin");
           resolve();
         });
     });

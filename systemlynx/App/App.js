@@ -27,18 +27,18 @@ module.exports = function SystemLynxApp() {
     };
 
     App.module = (name, __constructor) => {
-      system.Modules.push({ name, __constructor });
+      system.modules.push({ name, __constructor });
       return App;
     };
   }
 
   App.loadService = (name, url) => {
-    system.Services.push({ name, url, onLoad: null, client: {} });
+    system.services.push({ name, url, onLoad: null, client: {} });
     return App;
   };
 
   App.onLoad = (handler) => {
-    const service = system.Services[system.Services.length - 1];
+    const service = system.services[system.services.length - 1];
     service.onLoad = handler;
     return App;
   };

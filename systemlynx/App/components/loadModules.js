@@ -1,5 +1,5 @@
 module.exports = async function loadModules(system, App) {
-  system.Modules.forEach(
+  system.modules.forEach(
     (mod) => (mod.module = system.Service.module(mod.name, mod.__constructor))
   );
 

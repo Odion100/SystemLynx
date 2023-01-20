@@ -1,10 +1,10 @@
 const SystemLynxClient = require("../../Client/Client");
 
-module.exports = ({ Services }, App, systemContext) => {
+module.exports = ({ services }, App, systemContext) => {
   const Client = SystemLynxClient(systemContext);
 
   return Promise.all(
-    Services.map((serviceData) => {
+    services.map((serviceData) => {
       const { url, limit, wait, name, onLoad } = serviceData;
       return new Promise((resolve) => {
         Client.loadService(url, { limit, wait })
