@@ -255,7 +255,9 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
 
   it('should be able to use App.on("ready", callback) fire a callback when App initialization is complete', async () => {
     const App = SystemLynxApp();
-
+    const route = "system-test";
+    const port = "4242";
+    App.startService({ route, port });
     App.module("mod", function () {
       this.test = () => {};
       this.test2 = () => {};
@@ -272,6 +274,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "services",
             "Service",
             "modules",
+            "connectionData",
             "configurations",
             "routing"
           );
@@ -326,7 +329,6 @@ describe("Use App.use(SystemLynxPlugin), to initializing Modules, and load Servi
     const plugin = (App, system) => {
       App.loadService("PluginService", pluginUrl);
       App.module("plugin", { testMethod: (data) => data });
-      console.log(system);
     };
     await new Promise((resolve) => {
       const App = SystemLynxApp();

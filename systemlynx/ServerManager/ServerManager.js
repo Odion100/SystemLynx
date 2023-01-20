@@ -39,6 +39,7 @@ module.exports = function SystemLynxServerManager() {
     route =
       route.charAt(route.length - 1) === "/" ? route.substr(route.length - 1) : route;
     const serviceUrl = `http://${host}:${port}/${route}`;
+
     serverConfigurations = {
       ...serverConfigurations,
       ...options,
@@ -68,7 +69,15 @@ module.exports = function SystemLynxServerManager() {
           ServerManager.addModule(name, Module, reserved_methods)
         );
         moduleQueue.length = 0;
-        resolve(ServerManager);
+        resolve({
+          modules,
+          port,
+          host,
+          route: `/${route}`,
+          serviceUrl,
+          namespace: `http://${host}:${socketPort}/${namespace}`,
+          SystemLynxService: true,
+        });
       })
     );
   };
