@@ -12,12 +12,17 @@ module.exports = function SystemLynxClient(systemContext) {
       return Client.loadedServices[url];
 
     const connData = await loadConnectionData(url, options);
-    const Service = SocketDispatcher(connData.namespace, undefined, systemContext);
-    Client.loadedServices[url] = Service;
+    const Service = Client.createService(connData);
     if (options.name) Client[options.name] = Service;
+    await new Promise((resolve) => Service.on("connect", resolve));
+    return Service;
+  };
+
+  Client.createService = (connData) => {
+    const Service = SocketDispatcher(connData.namespace, undefined, systemContext);
 
     Service.resetConnection = async (cb) => {
-      const { modules, host, port, namespace } = await loadConnectionData(url, options);
+      const { modules, host, port, namespace } = await loadConnectionData(url);
 
       SocketDispatcher.apply(Service, [namespace, undefined, systemContext]);
 
@@ -40,7 +45,6 @@ module.exports = function SystemLynxClient(systemContext) {
 
     Service.on("disconnect", Service.resetConnection);
 
-    await new Promise((resolve) => Service.on("connect", resolve));
     return Service;
   };
 

@@ -47,18 +47,31 @@ module.exports = function SystemLynxServerManager() {
       route,
       socketPort,
     };
+    const connectionData = {
+      modules,
+      host,
+      route: `/${route}`,
+      port,
+      serviceUrl,
+      namespace: `http://${host}:${socketPort}/${namespace}`,
+      SystemLynxService: true,
+    };
+
+    const selectModules = (moduleList) =>
+      moduleList.reduce(
+        (sum, moduleName) =>
+          sum.concat(modules.find(({ name }) => name === moduleName) || []),
+        []
+      );
 
     server.get(`/${route}`, (req, res) => {
       //The route will return connection data for the service including an array of
       //modules (objects) which contain instructions on how to make request to each object
+      const { query } = req;
+
       res.json({
-        modules,
-        port,
-        host,
-        route: `/${route}`,
-        serviceUrl,
-        namespace: `http://${host}:${socketPort}/${namespace}`,
-        SystemLynxService: true,
+        ...connectionData,
+        modules: query.modules ? selectModules(query.modules.split(",")) : modules,
       });
     });
 
@@ -69,15 +82,7 @@ module.exports = function SystemLynxServerManager() {
           ServerManager.addModule(name, Module, reserved_methods)
         );
         moduleQueue.length = 0;
-        resolve({
-          modules,
-          port,
-          host,
-          route: `/${route}`,
-          serviceUrl,
-          namespace: `http://${host}:${socketPort}/${namespace}`,
-          SystemLynxService: true,
-        });
+        resolve(connectionData);
       })
     );
   };

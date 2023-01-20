@@ -8,7 +8,12 @@ const makeQuery = (data) =>
     (query, name) => (query += `${name}=${data[name]}&`),
     "?"
   );
-module.exports = function ServiceRequestHandler(method, fn, resetConnection) {
+module.exports = function ServiceRequestHandler(
+  method,
+  fn,
+  reconnectService,
+  reconnectModule
+) {
   const ClientModule = this;
 
   return function sendRequest() {
@@ -48,7 +53,8 @@ module.exports = function ServiceRequestHandler(method, fn, resetConnection) {
       } else if (errCount <= 3) {
         console.log(err);
         errCount++;
-        resetConnection(() => tryRequest(cb, errCount));
+        if (reconnectModule) reconnectModule(() => tryRequest(cb, errCount));
+        else reconnectService(() => tryRequest(cb, errCount));
       } else throw Error(`[SystemLynx][Service][Error]: Invalid route:${err}`);
     };
 
