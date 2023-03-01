@@ -1,7 +1,7 @@
 const isObject = (value) =>
   typeof value === "object" ? (!value ? false : !Array.isArray(value)) : false;
 const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
-const isPromise = (p) => typeof p === "object" && typeof p.then === "function";
+const isPromise = (p) => typeof p === "object" && typeof (p || {}).then === "function";
 
 module.exports = function SystemLynxRouter(server, config) {
   const addService = (Module, route, { fn, method }, module_name) => {

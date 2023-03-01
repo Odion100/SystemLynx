@@ -11,12 +11,16 @@ module.exports = function SystemLynxDispatcher(events = {}, systemContext) {
   };
 
   Dispatcher.on = (eventName, callback) => {
-    if (typeof callback !== "function")
-      throw Error(
-        "[SystemLynx][EventHandler][Error]: EventHandler.on(eventName, callback) received invalid parameters"
-      );
+    if (typeof callback !== "function") return Dispatcher;
+
     if (!events[eventName]) events[eventName] = [];
-    events[eventName].push(callback);
+
+    if (callback.name) {
+      //if the function has a name and it already present don't add it
+      const i = events[eventName].findIndex((fn) => fn.name === callback.name);
+      if (i === -1) events[eventName].push(callback);
+      else events[eventName][i] = callback;
+    } else events[eventName].push(callback);
     return Dispatcher;
   };
 
