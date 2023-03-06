@@ -4,8 +4,8 @@ const SystemLynxDispatcher = require("../Dispatcher/Dispatcher");
 
 module.exports = function SystemLynxService(systemContext = {}) {
   const ServerManager = SystemLynxServerManager();
-  const { startService, Server, WebSocket } = ServerManager;
-  const Service = { startService, Server, WebSocket };
+  const { startService, server, WebSocket } = ServerManager;
+  const Service = { startService, server, WebSocket };
 
   Service.module = function (name, constructor, reserved_methods = []) {
     const exclude_methods = reserved_methods.concat(
@@ -29,7 +29,7 @@ module.exports = function SystemLynxService(systemContext = {}) {
         undefined,
         systemContext,
       ]);
-      constructor.apply(Module, [ServerManager.Server(), ServerManager.WebSocket()]);
+      constructor.apply(Module, [server, WebSocket]);
       ServerManager.addModule(name, Module, exclude_methods);
       return Module;
     }

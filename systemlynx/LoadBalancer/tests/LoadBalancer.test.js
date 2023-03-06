@@ -9,10 +9,8 @@ describe("LoadBalancer()", () => {
   it("should return a SystemLynx LoadBalancer", () => {
     expect(LoadBalancer)
       .to.be.an("object")
-      .that.has.all.keys("startService", "Server", "WebSocket", "module", "clones")
+      .that.has.all.keys("startService", "server", "WebSocket", "module", "clones")
       .that.respondsTo("startService")
-      .that.respondsTo("Server")
-      .that.respondsTo("WebSocket")
       .that.respondsTo("module");
     expect(LoadBalancer.clones)
       .to.be.an("object")

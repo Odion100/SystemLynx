@@ -30,6 +30,8 @@ module.exports = function SystemLynxApp() {
       system.modules.push({ name, __constructor });
       return App;
     };
+    App.server = system.Service.server;
+    App.WebSocket = system.Service.WebSocket;
   }
 
   App.loadService = (name, url) => {

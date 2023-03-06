@@ -17,7 +17,9 @@ describe("SystemLynxApp()", () => {
         "startService",
         "loadService",
         "onLoad",
-        "config"
+        "config",
+        "server",
+        "WebSocket"
       )
       .that.respondsTo("module")
       .that.respondsTo("on")

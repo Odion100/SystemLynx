@@ -34,16 +34,16 @@ module.exports = function SystemLynxRouter(server, config) {
     const { query, file, files, body, fn, Module, module_name, method } = req;
     const { serviceUrl } = config();
     const presets = { serviceUrl, module_name, fn };
+    const unhandledMessage = `[SystemLynx]: handled error While calling ${module_name}.${fn}(...)`;
 
     const sendError = (error) => {
       const status = (error || {}).status || 500;
-      const message = (error || {}).message || "Unexpected error";
-      const unhandledMessage = status === 500 ? "Unhandled error" : "Error";
+      const message = (error || {}).message || unhandledMessage;
       res.status(status).json({
         ...presets,
-        error,
+        ...error,
         status,
-        message: `[SystemLynx][error]: ${unhandledMessage} While calling ${module_name}.${fn}(...): ${message}`,
+        message,
         SystemLynxServiceError: true,
       });
     };

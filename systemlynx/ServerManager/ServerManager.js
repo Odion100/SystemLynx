@@ -24,7 +24,7 @@ module.exports = function SystemLynxServerManager() {
   const moduleQueue = [];
   const modules = [];
 
-  const ServerManager = { Server: () => server, WebSocket: () => WebSocket };
+  const ServerManager = { server, WebSocket };
 
   ServerManager.startService = (options) => {
     let { route, host = "localhost", port, socketPort, staticRouting } = options;

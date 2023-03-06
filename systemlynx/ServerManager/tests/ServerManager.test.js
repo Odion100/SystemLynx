@@ -8,11 +8,9 @@ describe("SystemLynxServerManager function", () => {
 
     expect(ServerManager)
       .to.be.an("Object")
-      .that.has.all.keys(["startService", "addModule", "Server", "WebSocket"])
+      .that.has.all.keys(["startService", "addModule", "server", "WebSocket"])
       .that.respondsTo("startService")
-      .that.respondsTo("addModule")
-      .that.respondsTo("Server")
-      .that.respondsTo("WebSocket");
+      .that.respondsTo("addModule");
   });
 });
 describe("ServerManager", () => {

@@ -7,11 +7,9 @@ describe("SystemLynxService", () => {
     const Service = SystemLynxService();
     expect(Service)
       .to.be.an("object")
-      .that.has.all.keys("startService", "module", "Server", "WebSocket")
+      .that.has.all.keys("startService", "module", "server", "WebSocket")
       .that.respondsTo("startService")
-      .that.respondsTo("module")
-      .that.respondsTo("Server")
-      .that.respondsTo("WebSocket");
+      .that.respondsTo("module");
   });
 });
 
