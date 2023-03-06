@@ -6,7 +6,6 @@ module.exports = function SystemLynxServer() {
   const express = require("express");
   const server = express();
   //express middleware
-  const bodyParser = require("body-parser");
   const multer = require("multer");
   //express file upload middleware setup
   const TEMP_LOCATION = "./temp";
@@ -36,7 +35,7 @@ module.exports = function SystemLynxServer() {
   server.use("/sf", singleFileUpload);
   server.use("/mf", multiFileUpload);
   server.use(express.static(cwd + "/public"));
-  server.use(bodyParser.json({ limit: "5mb" }));
+  server.use(express.json({ limit: "5mb" }));
 
   server.use((req, res, next) => {
     res.setHeader("Access-Control-Allow-Origin", "*");

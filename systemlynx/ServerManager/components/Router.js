@@ -73,7 +73,7 @@ module.exports = function SystemLynxRouter(server, config) {
       if (!isEmpty(query) && !args.length) args.push(query);
       if (isObject(args[0]) && method === "PUT") args[0] = { ...args[0], file, files };
 
-      const results = Module[fn].apply(Module, args);
+      const results = Module[fn].apply({ ...Module, req, res }, args);
 
       if (isPromise(results)) {
         results.then(sendResponse).catch(sendError);
