@@ -1,10 +1,11 @@
 //express server, socket.io server and middleware needed for SystemLynx basic functionality
-
-module.exports = function SystemLynxServer() {
+const clearFolder = require("./clearFolder");
+const clearTempFolder = clearFolder.bind({}, "./temp");
+module.exports = function createServer(customServer) {
   const cwd = process.cwd();
   //express server
   const express = require("express");
-  const server = express();
+  const server = customServer || express();
   //express middleware
   const multer = require("multer");
   //express file upload middleware setup
@@ -17,19 +18,21 @@ module.exports = function SystemLynxServer() {
       cb(null, `${shortId()}.${mime.getExtension(file.mimetype)}`),
   });
   //multi-file and single-file upload middleware functions
-  const sf = multer({ storage: storage }).single("file");
-  const mf = multer({ storage: storage }).array("files");
+  const sf = multer({ storage }).single("file");
+  const mf = multer({ storage }).array("files");
   //the sf and mf functions are used to a extract file from the req during a file upload
   //a property named file and files will be added to the req object respectively
   const singleFileUpload = (req, res, next) =>
     sf(req, res, (err) => {
-      if (err) res.json(errorResponseBuilder(err));
-      else next();
+      if (err) return res.json(err);
+      res.on("finish", clearTempFolder);
+      next();
     });
   const multiFileUpload = (req, res, next) =>
     mf(req, res, (err) => {
-      if (err) res.json(errorResponseBuilder(err));
-      else next();
+      if (err) return res.json(err);
+      res.on("finish", clearTempFolder);
+      next();
     });
 
   server.use("/sf", singleFileUpload);

@@ -1,25 +1,25 @@
 "use strict";
 const { isNode } = require("../../utils/ProcessChecker");
-const SystemLynxService = require("../Service/Service");
-const SystemLynxDispatcher = require("../Dispatcher/Dispatcher");
+const createService = require("../Service/Service");
+const createDispatcher = require("../Dispatcher/Dispatcher");
 const initializeApp = require("./components/initializeApp");
 const SystemLynxContext = require("../utils/SystemContext");
 const System = require("../utils/System");
 
-module.exports = function SystemLynxApp() {
+module.exports = function createApp(server, WebSocket, customClient) {
   const system = new System();
   const systemContext = SystemLynxContext(system);
-  const App = SystemLynxDispatcher(undefined, systemContext);
+  const App = createDispatcher(undefined, systemContext);
   const plugins = [];
   setTimeout(() => {
     plugins.forEach((plugin) => {
       if (typeof plugin === "function") plugin.apply({}, [App, system]);
     });
-    initializeApp(system, App, systemContext);
+    initializeApp(system, App, customClient, systemContext);
   }, 0);
 
   if (isNode) {
-    system.Service = SystemLynxService(systemContext);
+    system.Service = createService(server, WebSocket, systemContext);
 
     App.startService = (options) => {
       system.routing = options;

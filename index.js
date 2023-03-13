@@ -1,21 +1,21 @@
 //These are all the abstractions that make up SystemLynx
 const { isNode } = require("./utils/ProcessChecker");
-const SystemLynxApp = require("./systemlynx/App/App");
-const SystemLynxLoadBalancer = require("./systemlynx/LoadBalancer/LoadBalancer");
-const SystemLynxService = require("./systemlynx/Service/Service");
-const SystemLynxServerManager = require("./systemlynx/ServerManager/ServerManager");
-const SystemLynxClient = require("./systemlynx/Client/Client");
-const SystemLynxHttpClient = require("./systemlynx/HttpClient/HttpClient");
-const SystemLynxDispatcher = require("./systemlynx/Dispatcher/Dispatcher");
+const createApp = require("./systemlynx/App/App");
+const createLoadBalancer = require("./systemlynx/LoadBalancer/LoadBalancer");
+const createService = require("./systemlynx/Service/Service");
+const createServerManager = require("./systemlynx/ServerManager/ServerManager");
+const createClient = require("./systemlynx/Client/Client");
+const createHttpClient = require("./systemlynx/HttpClient/HttpClient");
+const createDispatcher = require("./systemlynx/Dispatcher/Dispatcher");
 
-const ServerManager = isNode ? SystemLynxServerManager() : null;
-const Service = isNode ? SystemLynxService() : null;
-const LoadBalancer = isNode ? SystemLynxLoadBalancer() : null;
+const ServerManager = isNode ? createServerManager() : null;
+const Service = isNode ? createService() : null;
+const LoadBalancer = isNode ? createLoadBalancer() : null;
 
-const App = SystemLynxApp();
-const HttpClient = SystemLynxHttpClient();
-const Client = SystemLynxClient();
-const Dispatcher = SystemLynxDispatcher();
+const App = createApp();
+const HttpClient = createHttpClient();
+const Client = createClient();
+const Dispatcher = createDispatcher();
 
 module.exports = {
   //Export these pre-created objects for convenient object destructuring
@@ -30,11 +30,11 @@ module.exports = {
   //export all modules themselves
   //all these modules export factory functions
   //to ensure non-singleton behavior
-  SystemLynxApp,
-  SystemLynxLoadBalancer,
-  SystemLynxService,
-  SystemLynxClient,
-  SystemLynxHttpClient,
-  SystemLynxServerManager,
-  SystemLynxDispatcher,
+  createApp,
+  createLoadBalancer,
+  createService,
+  createClient,
+  createHttpClient,
+  createServerManager,
+  createDispatcher,
 };

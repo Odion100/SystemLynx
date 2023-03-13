@@ -1,10 +1,10 @@
 const { expect } = require("chai");
-const SystemLynxServerManager = require("../ServerManager");
+const createServerManager = require("../ServerManager");
 const request = require("request");
 
-describe("SystemLynxServerManager function", () => {
+describe("createServerManager function", () => {
   it("should return an ServerManager instance", () => {
-    const ServerManager = SystemLynxServerManager();
+    const ServerManager = createServerManager();
 
     expect(ServerManager)
       .to.be.an("Object")
@@ -15,7 +15,7 @@ describe("SystemLynxServerManager function", () => {
 });
 describe("ServerManager", () => {
   it("should be able use ServerManager.startService to start a server that will accept requests for Module Connection Data on the given route", async () => {
-    const ServerManager = SystemLynxServerManager();
+    const ServerManager = createServerManager();
     const route = "/testService";
     const port = 4400;
     const url = `http://localhost:${port}${route}`;
@@ -43,7 +43,7 @@ describe("ServerManager", () => {
   });
 
   it("should be able to use the ServerManager.addModule method to add data to the ServerManager instance that can be accessed via a GET request", async () => {
-    const ServerManager = SystemLynxServerManager();
+    const ServerManager = createServerManager();
     const route = "/testService";
     const port = 4634;
     const url = `http://localhost:${port}${route}`;
@@ -78,7 +78,7 @@ describe("ServerManager", () => {
   });
 
   it("should be able call ServerManager.addModule method before or after calling ServerManager.startService", async () => {
-    const ServerManager = SystemLynxServerManager();
+    const ServerManager = createServerManager();
     const route = "/testService";
     const port = 4500;
     const url = `http://localhost:${port}${route}`;
@@ -117,7 +117,7 @@ describe("ServerManager", () => {
 
 describe("ServerManager.startService(ServerConfiguration)", () => {
   it("should be able to use the useREST=true property to create a REST API route for any method with the name 'get', 'put', 'post' or 'delete'", async () => {
-    const ServerManager = SystemLynxServerManager();
+    const ServerManager = createServerManager();
     const route = "/testAPI";
     const port = 8372;
     const url = `http://localhost:${port}${route}`;
@@ -156,7 +156,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
   });
 
   it("should be able to use the staticRouting=true property to create static routes to the Modules", async () => {
-    const ServerManager = SystemLynxServerManager();
+    const ServerManager = createServerManager();
     const route = "/testAPI";
     const port = 2233;
     const url = `http://localhost:${port}${route}`;

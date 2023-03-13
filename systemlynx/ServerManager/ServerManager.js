@@ -1,12 +1,17 @@
 "use strict";
-const SystemLynxServer = require("./components/Server");
-const SystemLynxRouter = require("./components/Router");
+const createServer = require("./components/Server");
+const createRouter = require("./components/Router");
 const SocketEmitter = require("./components/SocketEmitter");
-const SystemLynxWebSocket = require("./components/WebSocketServer");
+const createWebSocket = require("./components/WebSocketServer");
 const parseMethods = require("./components/parseMethods");
 const shortId = require("shortid");
+const randomPort = () => parseInt(Math.random() * parseInt(Math.random() * 10000)) + 1023;
+const createSSLServer = (app, options) => {
+  const https = require("https");
+  return https.createServer(options, app);
+};
 
-module.exports = function SystemLynxServerManager() {
+module.exports = function createServerManager(customServer, customWebSocketServer) {
   let serverConfigurations = {
     route: null,
     port: null,
@@ -16,21 +21,26 @@ module.exports = function SystemLynxServerManager() {
     useREST: false,
     useService: true,
     staticRouting: false,
-    middleware: [],
+    ssl: { key: "", cert: "" },
   };
-  const server = SystemLynxServer();
-  const router = SystemLynxRouter(server, () => serverConfigurations);
-  const { SocketServer, WebSocket } = SystemLynxWebSocket();
+  const server = createServer(customServer);
+  const router = createRouter(server, () => serverConfigurations);
+  const { SocketServer, WebSocket } = createWebSocket(customWebSocketServer);
   const moduleQueue = [];
   const modules = [];
 
   const ServerManager = { server, WebSocket };
 
   ServerManager.startService = (options) => {
-    let { route, host = "localhost", port, socketPort, staticRouting } = options;
+    let {
+      route,
+      host = "localhost",
+      port,
+      socketPort = randomPort(),
+      staticRouting,
+      ssl,
+    } = options;
 
-    socketPort =
-      socketPort || parseInt(Math.random() * parseInt(Math.random() * 10000)) + 1023;
     const namespace = staticRouting ? route : shortId();
     SocketServer.listen(socketPort);
     SocketEmitter.apply(ServerManager, [namespace, WebSocket]);
@@ -38,7 +48,8 @@ module.exports = function SystemLynxServerManager() {
     route = route.charAt(0) === "/" ? route.substr(1) : route;
     route =
       route.charAt(route.length - 1) === "/" ? route.substr(route.length - 1) : route;
-    const serviceUrl = `http://${host}:${port}/${route}`;
+    const protocol = ssl ? "https" : "http";
+    const serviceUrl = `${protocol}://${host}:${port}/${route}`;
 
     serverConfigurations = {
       ...serverConfigurations,
@@ -57,34 +68,23 @@ module.exports = function SystemLynxServerManager() {
       SystemLynxService: true,
     };
 
-    const selectModules = (moduleList) =>
-      moduleList.reduce(
-        (sum, moduleName) =>
-          sum.concat(modules.find(({ name }) => name === moduleName) || []),
-        []
-      );
-
     server.get(`/${route}`, (req, res) => {
       //The route will return connection data for the service including an array of
       //modules (objects) which contain instructions on how to make request to each object
-      const { query } = req;
-
-      res.json({
-        ...connectionData,
-        modules: query.modules ? selectModules(query.modules.split(",")) : modules,
-      });
+      res.json({ ...connectionData, modules });
     });
 
-    return new Promise((resolve) =>
-      server.listen(port, () => {
+    return new Promise((resolve) => {
+      const _server = ssl ? createSSLServer(server, ssl) : server;
+      _server.listen(port, () => {
         console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}`);
         moduleQueue.forEach(({ name, Module, reserved_methods }) =>
           ServerManager.addModule(name, Module, reserved_methods)
         );
         moduleQueue.length = 0;
         resolve(connectionData);
-      })
-    );
+      });
+    });
   };
 
   ServerManager.addModule = (name, Module, reserved_methods = []) => {
@@ -122,3 +122,13 @@ module.exports = function SystemLynxServerManager() {
 
   return ServerManager;
 };
+
+//creating an ssl setup with openssl cli
+//1. `openssl genrsa -out key.pem` to generate a private key
+//2. create a certificate signing request using the key we just generated
+// `openssl req -new -key key.pem -out csr.pem`
+//3. Answer the prompts in the terminal
+//4. use the newly generate csr to generate a ssl certificate
+// openssl x509 -req -days 365 -in csr.pem -signkey key.pem -out cert.pem
+//(x509 is the standard to use for the certificate, days are the number of day the cert is valid)
+//5. csr.pem is no longer needed

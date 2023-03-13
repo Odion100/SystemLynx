@@ -1,9 +1,13 @@
 "use strict";
-const SystemLynxServerManager = require("../ServerManager/ServerManager");
-const SystemLynxDispatcher = require("../Dispatcher/Dispatcher");
+const createServerManager = require("../ServerManager/ServerManager");
+const createDispatcher = require("../Dispatcher/Dispatcher");
 
-module.exports = function SystemLynxService(systemContext = {}) {
-  const ServerManager = SystemLynxServerManager();
+module.exports = function createService(
+  customServer,
+  customWebSocketServer,
+  systemContext = {}
+) {
+  const ServerManager = createServerManager(customServer, customWebSocketServer);
   const { startService, server, WebSocket } = ServerManager;
   const Service = { startService, server, WebSocket };
 
@@ -13,7 +17,7 @@ module.exports = function SystemLynxService(systemContext = {}) {
     );
 
     if (typeof constructor === "object" && constructor instanceof Object) {
-      const Module = SystemLynxDispatcher.apply({ ...constructor, ...systemContext }, [
+      const Module = createDispatcher.apply({ ...constructor, ...systemContext }, [
         undefined,
         systemContext,
       ]);
@@ -25,10 +29,7 @@ module.exports = function SystemLynxService(systemContext = {}) {
       if (constructor.constructor.name === "AsyncFunction")
         throw `[SystemLynx][Module][Error]: Module(name, constructor) function cannot receive an async function as the constructor`;
 
-      const Module = SystemLynxDispatcher.apply(systemContext, [
-        undefined,
-        systemContext,
-      ]);
+      const Module = createDispatcher.apply(systemContext, [undefined, systemContext]);
       constructor.apply(Module, [server, WebSocket]);
       ServerManager.addModule(name, Module, exclude_methods);
       return Module;

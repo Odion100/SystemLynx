@@ -1,7 +1,7 @@
 const loadModules = require("./loadModules");
 const loadServices = require("./loadServices");
 
-module.exports = async function initApp(system, App, systemContext) {
+module.exports = async function initApp(system, App, customClient, systemContext) {
   let configComplete = false;
   const continuationERROR = () => {
     if (!configComplete)
@@ -16,7 +16,7 @@ module.exports = async function initApp(system, App, systemContext) {
   };
 
   try {
-    await loadServices(system, App, systemContext);
+    await loadServices(system, App, customClient, systemContext);
   } catch (err) {
     throw `[SystemLynx][App][Error]: Initialization Error - failed to load all services`;
   }

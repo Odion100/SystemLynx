@@ -1,10 +1,12 @@
-const HttpClient = require("../../HttpClient/HttpClient")();
-
-module.exports = function loadConnectionData(url, { limit = 10, wait = 150 } = {}) {
+module.exports = function loadConnectionData(
+  httpClient,
+  url,
+  { limit = 10, wait = 150 } = {}
+) {
   const errors = [];
 
   return new Promise(function getData(resolve) {
-    HttpClient.request({ method: "GET", url }, (err, results) => {
+    httpClient.request({ method: "GET", url }, (err, results) => {
       if (err) {
         errors.push(err);
 

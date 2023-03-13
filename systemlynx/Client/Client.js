@@ -2,8 +2,9 @@
 const loadConnectionData = require("./components/loadConnectionData");
 const SocketDispatcher = require("./components/SocketDispatcher");
 const ClientModule = require("./components/ClientModule");
+const HttpClient = require("../HttpClient/HttpClient");
 
-module.exports = function SystemLynxClient(systemContext) {
+module.exports = function createClient(httpClient = HttpClient(), systemContext) {
   const Client = {};
   Client.loadedServices = {};
 
@@ -11,7 +12,7 @@ module.exports = function SystemLynxClient(systemContext) {
     if (Client.loadedServices[url] && !options.forceReload)
       return Client.loadedServices[url];
 
-    const connData = await loadConnectionData(url, options);
+    const connData = await loadConnectionData(httpClient, url, options);
     const Service = Client.createService(connData);
     Client.loadedServices[url] = Service;
     await new Promise((resolve) => Service.on("connect", resolve));
@@ -29,6 +30,7 @@ module.exports = function SystemLynxClient(systemContext) {
 
     Service.resetConnection = async (cb) => {
       const { modules, host, port, namespace } = await loadConnectionData(
+        httpClient,
         connData.serviceUrl
       );
       SocketDispatcher.apply(Service, [namespace, events, systemContext]);
@@ -47,6 +49,7 @@ module.exports = function SystemLynxClient(systemContext) {
     connData.modules.forEach(
       (mod) =>
         (Service[mod.name] = ClientModule(
+          httpClient,
           mod,
           connData,
           Service.resetConnection,

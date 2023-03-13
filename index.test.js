@@ -6,22 +6,22 @@ const {
   Client,
   Service,
   ServerManager,
-  SystemLynxApp,
-  SystemLynxLoadBalancer,
-  SystemLynxService,
-  SystemLynxClient,
-  SystemLynxHttpClient,
-  SystemLynxServerManager,
+  createApp,
+  createLoadBalancer,
+  createService,
+  createClient,
+  createHttpClient,
+  createServerManager,
 } = require("./index");
 
 describe("SystemLynxSystemLynx  functions", () => {
   it("should return aSystemLynx  functions for each SystemLynx abstraction", () => {
-    expect(SystemLynxApp).to.be.a("function");
-    expect(SystemLynxLoadBalancer).to.be.a("function");
-    expect(SystemLynxService).to.be.a("function");
-    expect(SystemLynxClient).to.be.a("function");
-    expect(SystemLynxHttpClient).to.be.a("function");
-    expect(SystemLynxServerManager).to.be.a("function");
+    expect(createApp).to.be.a("function");
+    expect(createLoadBalancer).to.be.a("function");
+    expect(createService).to.be.a("function");
+    expect(createClient).to.be.a("function");
+    expect(createHttpClient).to.be.a("function");
+    expect(createServerManager).to.be.a("function");
   });
 
   it("should return an instance of each SystemLynx abstraction", () => {});

@@ -1,7 +1,7 @@
 const { expect } = require("chai");
 const Dispatcher = require("./Dispatcher");
 
-describe("SystemLynxDispatcher", () => {
+describe("createDispatcher", () => {
   const dispatcher = Dispatcher();
   it("should return an EventDispatcher object with methods on and emit", async () => {
     expect(dispatcher)

@@ -2,7 +2,7 @@
 const httpClient = require("request");
 const json = true;
 
-module.exports = function SystemLynxClient() {
+module.exports = function createClient() {
   const Client = this || {};
   Client.request = ({ method, url, body }, cb) => {
     const tryRequest = (callback) => {

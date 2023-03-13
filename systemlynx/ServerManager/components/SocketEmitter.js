@@ -1,9 +1,9 @@
 "use strict";
-const SystemLynxDispatcher = require("../../Dispatcher/Dispatcher");
+const createDispatcher = require("../../Dispatcher/Dispatcher");
 const shortid = require("shortid");
 module.exports = function SocketEmitter(namespace, WebSocket) {
   const Emitter =
-    (this || {}).on && (this || {}).emit ? this : SystemLynxDispatcher.apply(this);
+    (this || {}).on && (this || {}).emit ? this : createDispatcher.apply(this);
 
   const socket = WebSocket.of(`/${namespace}`);
   //use $emit to emit events locally only

@@ -3,7 +3,7 @@ const isObject = (value) =>
 const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
 const isPromise = (p) => typeof p === "object" && typeof (p || {}).then === "function";
 
-module.exports = function SystemLynxRouter(server, config) {
+module.exports = function createRouter(server, config) {
   const addService = (Module, route, { fn, method }, module_name) => {
     server[method](
       [`/${route}/${fn}`, `/sf/${route}/${fn}`, `/mf/${route}/${fn}`],
@@ -44,7 +44,7 @@ module.exports = function SystemLynxRouter(server, config) {
         ...error,
         status,
         message,
-        SystemLynxServiceError: true,
+        SystemLynxService: true,
       });
     };
 

@@ -1,7 +1,7 @@
-const SystemLynxClient = require("../../Client/Client");
+const createClient = require("../../Client/Client");
 
-module.exports = ({ services }, App, systemContext) => {
-  const Client = SystemLynxClient(systemContext);
+module.exports = ({ services }, App, customClient, systemContext) => {
+  const Client = createClient(customClient, systemContext);
 
   return Promise.all(
     services.map((serviceData) => {
