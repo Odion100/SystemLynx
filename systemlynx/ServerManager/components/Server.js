@@ -40,15 +40,16 @@ module.exports = function createServer(customServer) {
   server.use(express.static(cwd + "/public"));
   server.use(express.json({ limit: "5mb" }));
 
-  server.use((req, res, next) => {
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT ,DELETE");
-    res.setHeader(
-      "Access-Control-Allow-Headers",
-      "X-Requested-With,content-type, Authorization"
-    );
-    next();
-  });
+  !customServer &&
+    server.use((req, res, next) => {
+      res.setHeader("Access-Control-Allow-Origin", "*");
+      res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT ,DELETE");
+      res.setHeader(
+        "Access-Control-Allow-Headers",
+        "X-Requested-With,content-type, Authorization"
+      );
+      next();
+    });
 
   return server;
 };
