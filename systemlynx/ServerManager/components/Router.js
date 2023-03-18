@@ -36,11 +36,6 @@ module.exports = function createRouter(server, config) {
 
   const setHelpers = (req, res, next) => {
     const { fn, module_name, query, file, files, body, method, Module } = req;
-    if (typeof Module[fn] !== "function")
-      return sendResponse({
-        message: `[SystemLynx][error]:${module_name}.${fn} method not found`,
-        status: 404,
-      });
 
     const { serviceUrl } = config();
     const presets = { serviceUrl, module_name, fn };
@@ -71,6 +66,12 @@ module.exports = function createRouter(server, config) {
         });
       } else sendError(returnValue);
     };
+
+    if (typeof Module[fn] !== "function")
+      return sendResponse({
+        message: `[SystemLynx][error]:${module_name}.${fn} method not found`,
+        status: 404,
+      });
 
     req.arguments = () => {
       const args = body.__arguments || [];

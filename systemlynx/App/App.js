@@ -30,6 +30,8 @@ module.exports = function createApp(server, WebSocket, customClient) {
       system.modules.push({ name, __constructor });
       return App;
     };
+
+    App.before = system.Service.before;
     App.server = system.Service.server;
     App.WebSocket = system.Service.WebSocket;
   }

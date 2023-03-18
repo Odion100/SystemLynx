@@ -9,7 +9,7 @@ module.exports = function createService(
 ) {
   const ServerManager = createServerManager(customServer, customWebSocketServer);
   const { startService, addRouteHandler, server, WebSocket } = ServerManager;
-  const Service = { startService, server, WebSocket };
+  const Service = { startService, server, WebSocket, before: addRouteHandler };
 
   Service.module = function (name, constructor, reserved_methods = []) {
     const exclude_methods = reserved_methods.concat(

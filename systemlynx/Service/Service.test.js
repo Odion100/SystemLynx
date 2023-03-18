@@ -7,9 +7,10 @@ describe("createService", () => {
     const Service = createService();
     expect(Service)
       .to.be.an("object")
-      .that.has.all.keys("startService", "module", "server", "WebSocket")
+      .that.has.all.keys("startService", "module", "server", "WebSocket", "before")
       .that.respondsTo("startService")
-      .that.respondsTo("module");
+      .that.respondsTo("module")
+      .that.respondsTo("before");
   });
 });
 
@@ -118,15 +119,38 @@ describe("Service.module(object)", () => {
     const mod = Service.module("mod", {
       action1: function () {
         const { req } = this;
-        return { beforeAction1: req.beforeAction1 };
+        const { beforeAction1, beforeModule, beforeService } = req;
+        return { beforeAction1, beforeModule, beforeService };
       },
       action2: function () {
         const { req } = this;
-        return { beforeAction1: req.beforeAction1 };
+        const { beforeAction1, beforeModule, beforeService } = req;
+        return { beforeAction1, beforeModule, beforeService };
       },
+    });
+    Service.module("mod2", function () {
+      this.action3 = function () {
+        const { req } = this;
+        const { beforeAction3, beforeModule, beforeService } = req;
+        return { beforeAction3, beforeModule, beforeService };
+      };
+      this.before("action3", (req, res, next) => {
+        req.beforeAction3 = true;
+        next();
+      });
     });
     mod.before("action1", (req, res, next) => {
       req.beforeAction1 = true;
+      next();
+    });
+
+    mod.before((req, res, next) => {
+      req.beforeModule = true;
+      next();
+    });
+
+    Service.before((req, res, next) => {
+      req.beforeService = true;
       next();
     });
     expect(mod)
@@ -181,10 +205,16 @@ describe("Service.module(object)", () => {
 
   it("should use SeverModule.before method to add a route handler before a target method", async () => {
     const Client = createClient();
-    const { mod } = await Client.loadService(url);
+    const { mod, mod2 } = await Client.loadService(url);
     const result = await mod.action1();
-    expect(result).to.deep.equal({ beforeAction1: true });
+    expect(result).to.deep.equal({
+      beforeAction1: true,
+      beforeModule: true,
+      beforeService: true,
+    });
     const result2 = await mod.action2();
-    expect(result2).to.deep.equal({});
+    expect(result2).to.deep.equal({ beforeModule: true, beforeService: true });
+    const result3 = await mod2.action3();
+    expect(result3).to.deep.equal({ beforeAction3: true, beforeService: true });
   });
 });

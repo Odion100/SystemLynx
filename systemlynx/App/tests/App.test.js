@@ -13,6 +13,7 @@ describe("createApp()", () => {
         "module",
         "on",
         "emit",
+        "before",
         "use",
         "startService",
         "loadService",
@@ -24,6 +25,7 @@ describe("createApp()", () => {
       .that.respondsTo("module")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("before")
       .that.respondsTo("use")
       .that.respondsTo("startService")
       .that.respondsTo("loadService")

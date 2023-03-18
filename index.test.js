@@ -35,6 +35,7 @@ describe("SystemLynx Objects", () => {
         "module",
         "on",
         "emit",
+        "before",
         "use",
         "startService",
         "loadService",
@@ -46,6 +47,7 @@ describe("SystemLynx Objects", () => {
       .that.respondsTo("module")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("before")
       .that.respondsTo("use")
       .that.respondsTo("startService")
       .that.respondsTo("loadService")
@@ -71,9 +73,17 @@ describe("SystemLynx Objects", () => {
   it("should return a SystemLynx LoadBalancer", () => {
     expect(LoadBalancer)
       .to.be.an("object")
-      .that.has.all.keys("startService", "server", "WebSocket", "clones", "module")
+      .that.has.all.keys(
+        "startService",
+        "server",
+        "WebSocket",
+        "clones",
+        "module",
+        "before"
+      )
       .that.respondsTo("startService")
-      .that.respondsTo("module");
+      .that.respondsTo("module")
+      .that.respondsTo("before");
     expect(LoadBalancer.clones)
       .to.be.an("object")
       .that.has.all.keys(
