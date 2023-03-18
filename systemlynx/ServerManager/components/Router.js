@@ -4,7 +4,7 @@ const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
 const isPromise = (p) => typeof p === "object" && typeof (p || {}).then === "function";
 
 module.exports = function createRouter(server, config) {
-  const addService = (Module, route, { fn, method }, module_name) => {
+  const addService = (Module, route, { fn, method }, module_name, validators) => {
     server[method](
       [`/${route}/${fn}`, `/sf/${route}/${fn}`, `/mf/${route}/${fn}`],
       (req, res, next) => {
@@ -13,11 +13,13 @@ module.exports = function createRouter(server, config) {
         req.Module = Module;
         next();
       },
+      systemlynxRes,
+      validators,
       routeHandler
     );
   };
 
-  const addREST = (Module, route, { method }, module_name) => {
+  const addREST = (Module, route, { method }, module_name, validators) => {
     server[method](
       [`/${route}`],
       (req, res, next) => {
@@ -26,12 +28,14 @@ module.exports = function createRouter(server, config) {
         req.Module = Module;
         next();
       },
+      systemlynxRes,
+      validators,
       routeHandler
     );
   };
 
-  const routeHandler = (req, res) => {
-    const { query, file, files, body, fn, Module, module_name, method } = req;
+  const systemlynxRes = (req, res, next) => {
+    const { fn, module_name } = req;
     const { serviceUrl } = config();
     const presets = { serviceUrl, module_name, fn };
     const unhandledMessage = `[SystemLynx]: handled error While calling ${module_name}.${fn}(...)`;
@@ -61,7 +65,14 @@ module.exports = function createRouter(server, config) {
         });
       } else sendError(returnValue);
     };
+    res.sendError = sendError;
+    res.sendResponse = sendResponse;
+    next();
+  };
 
+  const routeHandler = (req, res) => {
+    const { query, file, files, body, fn, Module, module_name, method } = req;
+    const { sendError, sendResponse } = res;
     if (typeof Module[fn] !== "function")
       return sendResponse({
         message: `[SystemLynx][error]:${module_name}.${fn} method not found`,

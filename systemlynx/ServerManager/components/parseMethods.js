@@ -1,6 +1,6 @@
 const parseMethods = (obj, reserved_methods = [], useREST) => {
   const methods = [];
-  const REST_methods = ["get", "put", "post", "delete"];
+  const REST_methods = ["get", "put", "post", "delete", "options"];
   const props = Object.getOwnPropertyNames(obj);
 
   props.forEach((fn) => {

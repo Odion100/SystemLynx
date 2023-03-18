@@ -89,9 +89,16 @@ describe("SystemLynx Objects", () => {
   it("should return a SystemLynx ServerManager instance", () => {
     expect(ServerManager)
       .to.be.an("Object")
-      .that.has.all.keys(["startService", "addModule", "server", "WebSocket"])
+      .that.has.all.keys([
+        "startService",
+        "addModule",
+        "addRouteHandler",
+        "server",
+        "WebSocket",
+      ])
       .that.respondsTo("startService")
-      .that.respondsTo("addModule");
+      .that.respondsTo("addModule")
+      .that.respondsTo("addRouteHandler");
   });
 
   it("should return a new instance of a Service", () => {

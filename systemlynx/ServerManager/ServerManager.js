@@ -22,6 +22,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     useService: true,
     staticRouting: false,
     ssl: { key: "", cert: "" },
+    validators: { $all: [] },
   };
   const server = createServer(customServer);
   const router = createRouter(server, () => serverConfigurations);
@@ -88,15 +89,22 @@ module.exports = function createServerManager(customServer, customWebSocketServe
   };
 
   ServerManager.addModule = (name, Module, reserved_methods = []) => {
-    const { host, route, serviceUrl, staticRouting, useService, useREST, socketPort } =
-      serverConfigurations;
+    const {
+      host,
+      route,
+      serviceUrl,
+      staticRouting,
+      useService,
+      useREST,
+      socketPort,
+      validators,
+    } = serverConfigurations;
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
     const methods = parseMethods(Module, ["on", "emit", ...reserved_methods], useREST);
     const namespace = staticRouting ? name : shortId();
 
     SocketEmitter.apply(Module, [namespace, WebSocket]);
-
     if (useService) {
       const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
 
@@ -106,20 +114,33 @@ module.exports = function createServerManager(customServer, customWebSocketServe
         name,
         methods,
       });
-      methods.forEach((method) => router.addService(Module, path, method, name));
+      methods.forEach((method) => {
+        const nsp = `${name}.${method.fn}`;
+        const _validators = [...validators.$all, ...(validators[nsp] || [])];
+        router.addService(Module, path, method, name, _validators);
+      });
     }
     if (useREST)
       methods.forEach((method) => {
+        const nsp = `${name}.${method.fn}`;
+        const _validators = [...validators.$all, ...(validators[nsp] || [])];
         switch (method.fn) {
           case "get":
           case "put":
           case "post":
           case "delete":
-            router.addREST(Module, `${route}/${name}`, method, name);
+            router.addREST(Module, `${route}/${name}`, method, name, _validators);
         }
       });
   };
-
+  ServerManager.addRouteHandler = (str_or_Fn, fn) => {
+    const name = typeof str_or_Fn === "string" ? str_or_Fn : "$all";
+    const handler = typeof str_or_Fn === "function" ? str_or_Fn : fn;
+    if (!serverConfigurations.validators[name])
+      serverConfigurations.validators[name] = [];
+    serverConfigurations.validators[name].push(handler);
+    console.log(serverConfigurations.validators);
+  };
   return ServerManager;
 };
 
