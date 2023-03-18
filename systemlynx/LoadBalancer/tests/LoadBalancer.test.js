@@ -14,9 +14,18 @@ describe("LoadBalancer()", () => {
       .that.respondsTo("module");
     expect(LoadBalancer.clones)
       .to.be.an("object")
-      .that.has.all.keys("on", "emit", "clones", "register", "dispatch", "assignDispatch")
+      .that.has.all.keys(
+        "on",
+        "emit",
+        "before",
+        "clones",
+        "register",
+        "dispatch",
+        "assignDispatch"
+      )
       .that.respondsTo("emit")
       .that.respondsTo("on")
+      .that.respondsTo("before")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")
       .that.respondsTo("assignDispatch")
@@ -71,6 +80,7 @@ describe("LoadBalancer.clones (Module)", () => {
         "on",
         "emit",
         "$emit",
+        "before",
         "register",
         "dispatch",
         "assignDispatch",
@@ -78,6 +88,7 @@ describe("LoadBalancer.clones (Module)", () => {
       )
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("before")
       .that.respondsTo("$emit")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")

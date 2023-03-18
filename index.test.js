@@ -76,9 +76,18 @@ describe("SystemLynx Objects", () => {
       .that.respondsTo("module");
     expect(LoadBalancer.clones)
       .to.be.an("object")
-      .that.has.all.keys("on", "emit", "clones", "register", "dispatch", "assignDispatch")
+      .that.has.all.keys(
+        "before",
+        "on",
+        "emit",
+        "clones",
+        "register",
+        "dispatch",
+        "assignDispatch"
+      )
       .that.respondsTo("emit")
       .that.respondsTo("on")
+      .that.respondsTo("before")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")
       .that.respondsTo("assignDispatch")

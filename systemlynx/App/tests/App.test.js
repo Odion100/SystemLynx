@@ -165,21 +165,37 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
       App.module("test", function () {
         expect(this)
           .to.be.an("object")
-          .that.has.all.keys("useModule", "useService", "useConfig", "on", "emit")
+          .that.has.all.keys(
+            "useModule",
+            "useService",
+            "useConfig",
+            "on",
+            "emit",
+            "before"
+          )
           .that.respondsTo("useModule")
           .that.respondsTo("useService")
           .that.respondsTo("useConfig")
           .that.respondsTo("on")
-          .that.respondsTo("emit");
+          .that.respondsTo("emit")
+          .that.respondsTo("before");
       }).module("test2", function () {
         expect(this)
           .to.be.an("object")
-          .that.has.all.keys("useModule", "useService", "useConfig", "on", "emit")
+          .that.has.all.keys(
+            "useModule",
+            "useService",
+            "useConfig",
+            "on",
+            "emit",
+            "before"
+          )
           .that.respondsTo("useModule")
           .that.respondsTo("useService")
           .that.respondsTo("useConfig")
           .that.respondsTo("on")
-          .that.respondsTo("emit");
+          .that.respondsTo("emit")
+          .that.respondsTo("before");
         resolve();
       })
     );

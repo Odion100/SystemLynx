@@ -101,10 +101,12 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     } = serverConfigurations;
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
-    const methods = parseMethods(Module, ["on", "emit", ...reserved_methods], useREST);
+    const exclude_methods = ["on", "emit", "before", ...reserved_methods];
+    const methods = parseMethods(Module, exclude_methods, useREST);
     const namespace = staticRouting ? name : shortId();
 
     SocketEmitter.apply(Module, [namespace, WebSocket]);
+    const _validators = [...validators.$all, ...(validators[name] || [])];
     if (useService) {
       const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
 
@@ -116,20 +118,20 @@ module.exports = function createServerManager(customServer, customWebSocketServe
       });
       methods.forEach((method) => {
         const nsp = `${name}.${method.fn}`;
-        const _validators = [...validators.$all, ...(validators[nsp] || [])];
-        router.addService(Module, path, method, name, _validators);
+        const customValidators = [..._validators, ...(validators[nsp] || [])];
+        router.addService(Module, path, method, name, customValidators);
       });
     }
     if (useREST)
       methods.forEach((method) => {
         const nsp = `${name}.${method.fn}`;
-        const _validators = [...validators.$all, ...(validators[nsp] || [])];
+        const customValidators = [..._validators, ...(validators[nsp] || [])];
         switch (method.fn) {
           case "get":
           case "put":
           case "post":
           case "delete":
-            router.addREST(Module, `${route}/${name}`, method, name, _validators);
+            router.addREST(Module, `${route}/${name}`, method, name, customValidators);
         }
       });
   };
@@ -139,7 +141,6 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     if (!serverConfigurations.validators[name])
       serverConfigurations.validators[name] = [];
     serverConfigurations.validators[name].push(handler);
-    console.log(serverConfigurations.validators);
   };
   return ServerManager;
 };

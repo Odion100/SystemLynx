@@ -13,9 +13,9 @@ module.exports = function createRouter(server, config) {
         req.Module = Module;
         next();
       },
-      systemlynxRes,
+      setHelpers,
       validators,
-      routeHandler
+      requestHandler
     );
   };
 
@@ -28,14 +28,20 @@ module.exports = function createRouter(server, config) {
         req.Module = Module;
         next();
       },
-      systemlynxRes,
+      setHelpers,
       validators,
-      routeHandler
+      requestHandler
     );
   };
 
-  const systemlynxRes = (req, res, next) => {
-    const { fn, module_name } = req;
+  const setHelpers = (req, res, next) => {
+    const { fn, module_name, query, file, files, body, method, Module } = req;
+    if (typeof Module[fn] !== "function")
+      return sendResponse({
+        message: `[SystemLynx][error]:${module_name}.${fn} method not found`,
+        status: 404,
+      });
+
     const { serviceUrl } = config();
     const presets = { serviceUrl, module_name, fn };
     const unhandledMessage = `[SystemLynx]: handled error While calling ${module_name}.${fn}(...)`;
@@ -65,25 +71,25 @@ module.exports = function createRouter(server, config) {
         });
       } else sendError(returnValue);
     };
+
+    req.arguments = () => {
+      const args = body.__arguments || [];
+      if (!isEmpty(query) && !args.length) args.push(query);
+      if (isObject(args[0]) && method === "PUT")
+        args[0] = { ...args[0], ...(file && { file }), ...(files && { files }) };
+      return args;
+    };
     res.sendError = sendError;
     res.sendResponse = sendResponse;
     next();
   };
 
-  const routeHandler = (req, res) => {
-    const { query, file, files, body, fn, Module, module_name, method } = req;
+  const requestHandler = (req, res) => {
+    const { fn, Module } = req;
     const { sendError, sendResponse } = res;
-    if (typeof Module[fn] !== "function")
-      return sendResponse({
-        message: `[SystemLynx][error]:${module_name}.${fn} method not found`,
-        status: 404,
-      });
 
     try {
-      const args = body.__arguments || [];
-      if (!isEmpty(query) && !args.length) args.push(query);
-      if (isObject(args[0]) && method === "PUT") args[0] = { ...args[0], file, files };
-
+      const args = req.arguments();
       const results = Module[fn].apply({ ...Module, req, res }, args);
 
       if (isPromise(results)) {
