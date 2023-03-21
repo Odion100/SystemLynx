@@ -24,5 +24,20 @@ module.exports = function createDispatcher(events = {}, systemContext) {
     return Dispatcher;
   };
 
+  Dispatcher.$clearEvent = (eventName, fn) => {
+    if (!events[eventName]) return Dispatcher;
+
+    if (!fn) {
+      // Clear all listeners for the given event
+      delete events[eventName];
+    } else {
+      // Remove the listener function with the specified name from the event's listener array
+      events[eventName] = events[eventName].filter((callback) => {
+        return callback.name !== fn;
+      });
+    }
+
+    return Dispatcher;
+  };
   return Dispatcher;
 };

@@ -35,6 +35,7 @@ describe("SystemLynx Objects", () => {
         "module",
         "on",
         "emit",
+        "$clearEvent",
         "before",
         "use",
         "startService",
@@ -47,6 +48,7 @@ describe("SystemLynx Objects", () => {
       .that.respondsTo("module")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("before")
       .that.respondsTo("use")
       .that.respondsTo("startService")
@@ -90,12 +92,14 @@ describe("SystemLynx Objects", () => {
         "before",
         "on",
         "emit",
+        "$clearEvent",
         "clones",
         "register",
         "dispatch",
         "assignDispatch"
       )
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("before")
       .that.respondsTo("register")

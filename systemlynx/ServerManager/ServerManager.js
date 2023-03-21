@@ -101,7 +101,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     } = serverConfigurations;
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
-    const exclude_methods = ["on", "emit", "before", ...reserved_methods];
+    const exclude_methods = ["on", "emit", "before", "$clearEvent", ...reserved_methods];
     const methods = parseMethods(Module, exclude_methods, useREST);
     const namespace = staticRouting ? name : shortId();
 

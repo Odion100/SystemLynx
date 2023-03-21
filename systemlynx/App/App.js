@@ -9,7 +9,7 @@ const System = require("../utils/System");
 module.exports = function createApp(server, WebSocket, customClient) {
   const system = new System();
   const systemContext = SystemLynxContext(system);
-  const App = createDispatcher(undefined, systemContext);
+  const App = new createDispatcher(undefined, systemContext);
   const plugins = [];
   setTimeout(() => {
     plugins.forEach((plugin) => {
@@ -31,7 +31,10 @@ module.exports = function createApp(server, WebSocket, customClient) {
       return App;
     };
 
-    App.before = system.Service.before;
+    App.before = (...args) => {
+      system.Service.before(...args);
+      return App;
+    };
     App.server = system.Service.server;
     App.WebSocket = system.Service.WebSocket;
   }

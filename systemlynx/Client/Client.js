@@ -24,7 +24,7 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
     if (Client.loadedServices[connData.serviceUrl])
       return Client.loadedServices[connData.serviceUrl];
 
-    const Service = SocketDispatcher(connData.namespace, events, systemContext);
+    const Service = new SocketDispatcher(connData.namespace, events, systemContext);
 
     Client.loadedServices[connData.serviceUrl] = Service;
 

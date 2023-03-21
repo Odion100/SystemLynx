@@ -28,8 +28,7 @@ module.exports = {
   ServerManager,
   Dispatcher,
   //export all modules themselves
-  //all these modules export factory functions
-  //to ensure non-singleton behavior
+  //all these modules export a functions
   createApp,
   createLoadBalancer,
   createService,

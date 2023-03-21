@@ -14,6 +14,7 @@ describe("createApp()", () => {
         "on",
         "emit",
         "before",
+        "$clearEvent",
         "use",
         "startService",
         "loadService",
@@ -25,6 +26,7 @@ describe("createApp()", () => {
       .that.respondsTo("module")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("before")
       .that.respondsTo("use")
       .that.respondsTo("startService")
@@ -55,9 +57,17 @@ describe("App: Loading Services", () => {
 
           expect(system.services[0].client)
             .to.be.an("object")
-            .that.has.all.keys("emit", "on", "resetConnection", "disconnect", "mod")
+            .that.has.all.keys(
+              "emit",
+              "on",
+              "$clearEvent",
+              "resetConnection",
+              "disconnect",
+              "mod"
+            )
             .that.respondsTo("emit")
             .that.respondsTo("on")
+            .that.respondsTo("$clearEvent")
             .that.respondsTo("resetConnection")
             .that.respondsTo("disconnect");
           resolve();
@@ -84,8 +94,16 @@ describe("App: Loading Services", () => {
       App.loadService("test", url).onLoad((test) => {
         expect(test)
           .to.be.an("object")
-          .that.has.all.keys("emit", "on", "resetConnection", "disconnect", "mod")
+          .that.has.all.keys(
+            "emit",
+            "on",
+            "$clearEvent",
+            "resetConnection",
+            "disconnect",
+            "mod"
+          )
           .that.respondsTo("emit")
+          .that.respondsTo("$clearEvent")
           .that.respondsTo("on")
           .that.respondsTo("resetConnection")
           .that.respondsTo("disconnect");
@@ -112,16 +130,32 @@ describe("App: Loading Services", () => {
         .on("service_loaded", (test) => {
           expect(test)
             .to.be.an("object")
-            .that.has.all.keys("emit", "on", "resetConnection", "disconnect", "mod")
+            .that.has.all.keys(
+              "emit",
+              "on",
+              "$clearEvent",
+              "resetConnection",
+              "disconnect",
+              "mod"
+            )
             .that.respondsTo("emit")
+            .that.respondsTo("$clearEvent")
             .that.respondsTo("on")
             .that.respondsTo("resetConnection");
         })
         .on("service_loaded:test", (test) => {
           expect(test)
             .to.be.an("object")
-            .that.has.all.keys("emit", "on", "resetConnection", "disconnect", "mod")
+            .that.has.all.keys(
+              "emit",
+              "on",
+              "$clearEvent",
+              "resetConnection",
+              "disconnect",
+              "mod"
+            )
             .that.respondsTo("emit")
+            .that.respondsTo("$clearEvent")
             .that.respondsTo("on")
             .that.respondsTo("resetConnection");
           resolve();
@@ -149,8 +183,16 @@ describe("App: Loading Services", () => {
           const test = this.useService("test");
           expect(test)
             .to.be.an("object")
-            .that.has.all.keys("emit", "on", "resetConnection", "disconnect", "mod")
+            .that.has.all.keys(
+              "emit",
+              "on",
+              "$clearEvent",
+              "resetConnection",
+              "disconnect",
+              "mod"
+            )
             .that.respondsTo("emit")
+            .that.respondsTo("$clearEvent")
             .that.respondsTo("on")
             .that.respondsTo("resetConnection");
           resolve();
@@ -173,6 +215,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "useConfig",
             "on",
             "emit",
+            "$clearEvent",
             "before"
           )
           .that.respondsTo("useModule")
@@ -180,6 +223,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
           .that.respondsTo("useConfig")
           .that.respondsTo("on")
           .that.respondsTo("emit")
+          .that.respondsTo("$clearEvent")
           .that.respondsTo("before");
       }).module("test2", function () {
         expect(this)
@@ -190,6 +234,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "useConfig",
             "on",
             "emit",
+            "$clearEvent",
             "before"
           )
           .that.respondsTo("useModule")
@@ -197,6 +242,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
           .that.respondsTo("useConfig")
           .that.respondsTo("on")
           .that.respondsTo("emit")
+          .that.respondsTo("$clearEvent")
           .that.respondsTo("before");
         resolve();
       })

@@ -61,9 +61,10 @@ describe("Service.module(constructor)", () => {
 
     expect(mod)
       .to.be.an("Object")
-      .that.has.all.keys("on", "emit", "before", "test", "test2")
+      .that.has.all.keys("on", "emit", "$clearEvent", "before", "test", "test2")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("before")
       .that.respondsTo("test")
       .that.respondsTo("test2");
@@ -155,11 +156,12 @@ describe("Service.module(object)", () => {
     });
     expect(mod)
       .to.be.an("Object")
-      .that.has.all.keys("action1", "action2", "on", "emit", "before")
+      .that.has.all.keys("action1", "action2", "on", "emit", "$clearEvent", "before")
       .that.respondsTo("action1")
       .that.respondsTo("action2")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("before");
   });
   it("should 'Serve' Service connection data created using an object as the constructor", async () => {

@@ -25,6 +25,7 @@ describe("LoadBalancer()", () => {
       .that.has.all.keys(
         "on",
         "emit",
+        "$clearEvent",
         "before",
         "clones",
         "register",
@@ -32,6 +33,7 @@ describe("LoadBalancer()", () => {
         "assignDispatch"
       )
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("before")
       .that.respondsTo("register")
@@ -88,6 +90,7 @@ describe("LoadBalancer.clones (Module)", () => {
         "on",
         "emit",
         "$emit",
+        "$clearEvent",
         "before",
         "register",
         "dispatch",
@@ -96,6 +99,7 @@ describe("LoadBalancer.clones (Module)", () => {
       )
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("before")
       .that.respondsTo("$emit")
       .that.respondsTo("register")

@@ -1,7 +1,7 @@
 module.exports = function loadConnectionData(
   httpClient,
   url,
-  { limit = 10, wait = 150 } = {}
+  { limit = 3, wait = 1000 } = {}
 ) {
   const errors = [];
 
