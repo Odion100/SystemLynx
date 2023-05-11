@@ -120,8 +120,13 @@ describe("Service.module(object)", () => {
     const mod = Service.module("mod", {
       action1: function () {
         const { req } = this;
-        const { beforeAction1, beforeModule, beforeService } = req;
-        return { beforeAction1, beforeModule, beforeService };
+        const { beforeAction1, beforeAction12, beforeModule, beforeService } = req;
+        return {
+          beforeAction1,
+          beforeModule,
+          beforeService,
+          beforeAction12,
+        };
       },
       action2: function () {
         const { req } = this;
@@ -140,10 +145,17 @@ describe("Service.module(object)", () => {
         next();
       });
     });
-    mod.before("action1", (req, res, next) => {
-      req.beforeAction1 = true;
-      next();
-    });
+    mod.before(
+      "action1",
+      (req, res, next) => {
+        req.beforeAction1 = true;
+        next();
+      },
+      (req, res, next) => {
+        req.beforeAction12 = true;
+        next();
+      }
+    );
 
     mod.before((req, res, next) => {
       req.beforeModule = true;
@@ -211,6 +223,7 @@ describe("Service.module(object)", () => {
     const result = await mod.action1();
     expect(result).to.deep.equal({
       beforeAction1: true,
+      beforeAction12: true,
       beforeModule: true,
       beforeService: true,
     });

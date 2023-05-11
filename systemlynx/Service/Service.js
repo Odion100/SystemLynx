@@ -15,14 +15,25 @@ module.exports = function createService(
     const exclude_methods = reserved_methods.concat(
       Object.getOwnPropertyNames(systemContext)
     );
-    const before = (arg1, arg2) => {
-      const fn = typeof arg1 === "string" ? `.${arg1}` : "";
-      const handler = typeof arg1 === "function" ? arg1 : arg2;
-      addRouteHandler(`${name}${fn}`, handler);
+    const before = (...args) => {
+      if (typeof args[0] === "string") {
+        const arg1 = args.shift();
+        const fn = arg1 === "$all" ? "" : `.${arg1}`;
+        addRouteHandler(`${name}${fn}`, ...args);
+      } else {
+        addRouteHandler(`${name}`, ...args);
+      }
     };
     if (typeof constructor === "object" && constructor instanceof Object) {
       const Module = createDispatcher.apply(
-        { ...constructor, ...systemContext, before },
+        {
+          ...Object.getOwnPropertyNames(constructor).reduce((obj, fn) => {
+            if (typeof constructor[fn] === "function") obj[fn] = constructor[fn];
+            return obj;
+          }, {}),
+          ...systemContext,
+          before,
+        },
         [undefined, systemContext]
       );
       ServerManager.addModule(name, Module, exclude_methods);

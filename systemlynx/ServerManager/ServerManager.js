@@ -135,12 +135,19 @@ module.exports = function createServerManager(customServer, customWebSocketServe
         }
       });
   };
-  ServerManager.addRouteHandler = (str_or_Fn, fn) => {
-    const name = typeof str_or_Fn === "string" ? str_or_Fn : "$all";
-    const handler = typeof str_or_Fn === "function" ? str_or_Fn : fn;
-    if (!serverConfigurations.validators[name])
-      serverConfigurations.validators[name] = [];
-    serverConfigurations.validators[name].push(handler);
+  ServerManager.addRouteHandler = (...args) => {
+    const name = typeof args[0] === "string" ? args.shift() : "$all";
+    args.forEach(async (middleware) => {
+      if (!serverConfigurations.validators[name])
+        serverConfigurations.validators[name] = [];
+      serverConfigurations.validators[name].push(async function (req, res, next) {
+        try {
+          await middleware(req, res, next);
+        } catch (error) {
+          res.sendError(error);
+        }
+      });
+    });
   };
   return ServerManager;
 };
