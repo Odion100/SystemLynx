@@ -138,6 +138,14 @@ module.exports = function createServerManager(customServer, customWebSocketServe
   ServerManager.addRouteHandler = (...args) => {
     const name = typeof args[0] === "string" ? args.shift() : "$all";
     args.forEach(async (middleware) => {
+      if (Array.isArray(middleware)) {
+        middleware.map(addMiddleware);
+      } else {
+        addMiddleware(middleware);
+      }
+    });
+
+    function addMiddleware(middleware) {
       if (!serverConfigurations.validators[name])
         serverConfigurations.validators[name] = [];
       serverConfigurations.validators[name].push(async function (req, res, next) {
@@ -147,7 +155,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
           res.sendError(error);
         }
       });
-    });
+    }
   };
   return ServerManager;
 };
