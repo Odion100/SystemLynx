@@ -11,11 +11,16 @@ module.exports = function createApp(server, WebSocket, customClient) {
   const systemContext = SystemLynxContext(system);
   const App = new createDispatcher(undefined, systemContext);
   const plugins = [];
-  setTimeout(() => {
+  const init = () => {
     plugins.forEach((plugin) => {
       if (typeof plugin === "function") plugin.apply({}, [App, system]);
     });
     initializeApp(system, App, customClient, systemContext);
+  };
+
+  let timeoutId = setTimeout(() => {
+    timeoutId = null;
+    init();
   }, 0);
 
   if (isNode) {
@@ -23,6 +28,12 @@ module.exports = function createApp(server, WebSocket, customClient) {
 
     App.startService = (options) => {
       system.routing = options;
+      if (!timeoutId) {
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
+          init();
+        }, 0);
+      }
       return App;
     };
 
