@@ -1,32 +1,35 @@
 "use strict";
 const loadConnectionData = require("./components/loadConnectionData");
 const SocketDispatcher = require("./components/SocketDispatcher");
+const HeaderSetter = require("./components/HeaderSetter");
 const ClientModule = require("./components/ClientModule");
 const HttpClient = require("../HttpClient/HttpClient");
 
 module.exports = function createClient(httpClient = HttpClient(), systemContext) {
   const Client = {};
-  Client.loadedServices = {};
+  Client.cachedServices = {};
 
   Client.loadService = async (url, options = {}) => {
-    if (Client.loadedServices[url] && !options.forceReload)
-      return Client.loadedServices[url];
+    if (Client.cachedServices[url] && !options.forceReload)
+      return Client.cachedServices[url];
 
     const connData = await loadConnectionData(httpClient, url, options);
     const Service = Client.createService(connData);
-    Client.loadedServices[url] = Service;
+    Client.cachedServices[url] = Service;
     await new Promise((resolve) => Service.on("connect", resolve));
     return Service;
   };
 
   Client.createService = (connData) => {
     const events = {};
-    if (Client.loadedServices[connData.serviceUrl])
-      return Client.loadedServices[connData.serviceUrl];
 
-    const Service = new SocketDispatcher(connData.namespace, events, systemContext);
+    if (Client.cachedServices[connData.serviceUrl])
+      return Client.cachedServices[connData.serviceUrl];
 
-    Client.loadedServices[connData.serviceUrl] = Service;
+    const Service = {};
+    SocketDispatcher.apply(Service, [connData.namespace, events, systemContext]);
+    HeaderSetter.apply(Service);
+    Client.cachedServices[connData.serviceUrl] = Service;
 
     Service.resetConnection = async (cb) => {
       const { modules, host, port, namespace } = await loadConnectionData(
@@ -52,7 +55,7 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
           httpClient,
           mod,
           connData,
-          Service.resetConnection,
+          Service,
           systemContext
         ))
     );

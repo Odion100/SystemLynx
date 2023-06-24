@@ -1,12 +1,13 @@
 "use strict";
-const httpClient = require("request");
+const request = require("request");
 const json = true;
 
-module.exports = function createClient() {
+module.exports = function createHttpClient() {
   const Client = this || {};
-  Client.request = ({ method, url, body }, cb) => {
+
+  Client.request = ({ method, url, body, headers }, cb) => {
     const tryRequest = (callback) => {
-      httpClient({ method, url, body, json }, (err, res, body) => {
+      request({ method, url, body, json, headers }, (err, res, body) => {
         if (err) callback(err);
         else if (res.statusCode >= 400) callback(body);
         else callback(null, body, res);
@@ -22,9 +23,9 @@ module.exports = function createClient() {
       );
   };
 
-  Client.upload = ({ url, formData }, cb) => {
+  Client.upload = ({ url, formData, headers }, cb) => {
     const tryRequest = (callback) => {
-      httpClient.post({ url, formData, json }, (err, res, body) => {
+      request.post({ url, formData, json, headers }, (err, res, body) => {
         if (err) callback(err);
         else if (res.statusCode >= 400) callback(body);
         else callback(null, body, res);

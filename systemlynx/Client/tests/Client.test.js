@@ -47,13 +47,17 @@ describe("Client", () => {
         "$clearEvent",
         "resetConnection",
         "disconnect",
+        "headers",
+        "setHeaders",
         "orders"
       )
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("resetConnection")
-      .that.respondsTo("disconnect");
+      .that.respondsTo("disconnect")
+      .that.respondsTo("headers")
+      .that.respondsTo("setHeaders");
 
     expect(buAPI.orders)
       .to.be.an("object")
@@ -62,6 +66,8 @@ describe("Client", () => {
         "on",
         "$clearEvent",
         "disconnect",
+        "headers",
+        "setHeaders",
         "__setConnection",
         "__connectionData",
         "action1",
@@ -73,6 +79,8 @@ describe("Client", () => {
       .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("headers")
+      .that.respondsTo("setHeaders")
       .that.respondsTo("$clearEvent")
       .that.respondsTo("__setConnection")
       .that.respondsTo("__connectionData")
@@ -218,5 +226,36 @@ describe("Service", () => {
     expect(results2).to.equal(2);
     const results3 = await AsyncMath.round(10.2);
     expect(results3).to.equal(10);
+  });
+  it("should maintain service and module level headers on a Client instance", async () => {
+    const service = createService();
+    const route = "setHeaders/test";
+    const port = 4999;
+    const host = "localhost";
+    const url = `http://localhost:${port}/${route}`;
+    service.module("Test", function () {
+      this.getHeaders = function () {
+        return this.req.headers.origin;
+      };
+    });
+    service.module("Test2", function () {
+      this.getHeaders = function () {
+        return this.req.headers.origin;
+      };
+    });
+
+    await service.startService({ route, port, host });
+
+    const Client = createClient();
+    const myService = await Client.loadService(url);
+    myService.setHeaders({ Origin: `http://localhost:${port}` });
+    myService.Test.setHeaders({ Origin: `http://localhost:${port + 1}` });
+
+    //because a module level headers were set for Test then I expect what was set
+    // for The Test2 module I expect the Service level header to be applied
+    const results = await myService.Test.getHeaders();
+    expect(results).to.equal(`http://localhost:${port + 1}`);
+    const results2 = await myService.Test2.getHeaders();
+    expect(results2).to.equal(`http://localhost:${port}`);
   });
 });

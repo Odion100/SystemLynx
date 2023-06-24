@@ -1,4 +1,5 @@
 "use strict";
+const headerSetter = require("./HeaderSetter");
 const ServiceRequestHandler = require("./ServiceRequestHandler");
 const SocketDispatcher = require("./SocketDispatcher");
 const getProtocol = (url) => url.match(/^(\w+):\/\//)[0];
@@ -7,11 +8,11 @@ module.exports = function SystemLynxClientModule(
   httpClient,
   { methods, namespace, route, connectionData, name },
   { port, host, serviceUrl },
-  reconnectService,
+  Service,
   systemContext
 ) {
   const events = {};
-  const ClientModule = {};
+  const ClientModule = headerSetter.apply({});
 
   ClientModule.__setConnection = (host, port, route, namespace) => {
     ClientModule.__connectionData = () => ({ route, host, port });
@@ -35,7 +36,7 @@ module.exports = function SystemLynxClientModule(
       protocol,
       method,
       fn,
-      reconnectService,
+      Service,
       connectionData && reconnectModule,
     ]);
   });

@@ -1,7 +1,7 @@
 "use strict";
 const isObject = (value) =>
   typeof value === "object" ? (!value ? false : !Array.isArray(value)) : false;
-
+const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
 const makeQuery = (data) =>
   Object.getOwnPropertyNames(data).reduce(
     (query, name) => (query += `${name}=${data[name]}&`),
@@ -12,7 +12,7 @@ module.exports = function ServiceRequestHandler(
   protocol,
   method,
   fn,
-  reconnectService,
+  Service,
   reconnectModule
 ) {
   const ClientModule = this;
@@ -26,7 +26,8 @@ module.exports = function ServiceRequestHandler(
       const defaultURL = `${protocol}${host}:${port}${route}/${fn}`;
       const { file, files } = __arguments[0] || {};
       const url = file ? singleFileURL : files ? multiFileURL : defaultURL;
-
+      const defaultHeaders = ClientModule.headers();
+      const headers = !isEmpty(defaultHeaders) ? defaultHeaders : Service.headers();
       if (url === defaultURL)
         httpClient
           .request({
@@ -37,6 +38,7 @@ module.exports = function ServiceRequestHandler(
             }`,
             method,
             body: { __arguments },
+            headers,
           })
           .then((results) => cb(null, results))
           .catch((err) => ErrorHandler(err, errCount, cb));
@@ -46,6 +48,7 @@ module.exports = function ServiceRequestHandler(
             url,
             method,
             formData: { ...__arguments[0], __arguments },
+            headers,
           })
           .then((results) => cb(null, results))
           .catch((err) => ErrorHandler(err, errCount, cb));
@@ -58,7 +61,7 @@ module.exports = function ServiceRequestHandler(
         console.log(err);
         errCount++;
         if (reconnectModule) reconnectModule(() => tryRequest(cb, errCount));
-        else reconnectService(() => tryRequest(cb, errCount));
+        else Service.reconnectService(() => tryRequest(cb, errCount));
       } else console.error(Error(`[SystemLynx][Service][Error]: Invalid route:${err}`));
     };
 

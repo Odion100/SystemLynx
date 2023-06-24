@@ -63,13 +63,17 @@ describe("App: Loading Services", () => {
               "$clearEvent",
               "resetConnection",
               "disconnect",
+              "headers",
+              "setHeaders",
               "mod"
             )
             .that.respondsTo("emit")
             .that.respondsTo("on")
             .that.respondsTo("$clearEvent")
             .that.respondsTo("resetConnection")
-            .that.respondsTo("disconnect");
+            .that.respondsTo("disconnect")
+            .that.respondsTo("headers")
+            .that.respondsTo("setHeaders");
           resolve();
         }
       );
@@ -100,13 +104,17 @@ describe("App: Loading Services", () => {
             "$clearEvent",
             "resetConnection",
             "disconnect",
+            "headers",
+            "setHeaders",
             "mod"
           )
           .that.respondsTo("emit")
           .that.respondsTo("$clearEvent")
           .that.respondsTo("on")
           .that.respondsTo("resetConnection")
-          .that.respondsTo("disconnect");
+          .that.respondsTo("disconnect")
+          .that.respondsTo("headers")
+          .that.respondsTo("setHeaders");
         resolve();
       });
     });
@@ -136,12 +144,16 @@ describe("App: Loading Services", () => {
               "$clearEvent",
               "resetConnection",
               "disconnect",
+              "headers",
+              "setHeaders",
               "mod"
             )
             .that.respondsTo("emit")
             .that.respondsTo("$clearEvent")
             .that.respondsTo("on")
-            .that.respondsTo("resetConnection");
+            .that.respondsTo("resetConnection")
+            .that.respondsTo("headers")
+            .that.respondsTo("setHeaders");
         })
         .on("service_loaded:test", (test) => {
           expect(test)
@@ -152,12 +164,16 @@ describe("App: Loading Services", () => {
               "$clearEvent",
               "resetConnection",
               "disconnect",
+              "headers",
+              "setHeaders",
               "mod"
             )
             .that.respondsTo("emit")
             .that.respondsTo("$clearEvent")
             .that.respondsTo("on")
-            .that.respondsTo("resetConnection");
+            .that.respondsTo("resetConnection")
+            .that.respondsTo("headers")
+            .that.respondsTo("setHeaders");
           resolve();
         });
     });
@@ -189,12 +205,16 @@ describe("App: Loading Services", () => {
               "$clearEvent",
               "resetConnection",
               "disconnect",
+              "headers",
+              "setHeaders",
               "mod"
             )
             .that.respondsTo("emit")
             .that.respondsTo("$clearEvent")
             .that.respondsTo("on")
-            .that.respondsTo("resetConnection");
+            .that.respondsTo("resetConnection")
+            .that.respondsTo("headers")
+            .that.respondsTo("setHeaders");
           resolve();
         })
         .on("ready", resolve);
