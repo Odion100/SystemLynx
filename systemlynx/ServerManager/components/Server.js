@@ -2,7 +2,6 @@
 const clearFolder = require("./clearFolder");
 const clearTempFolder = clearFolder.bind({}, "./temp");
 module.exports = function createServer(customServer) {
-  const cwd = process.cwd();
   //express server
   const express = require("express");
   const server = customServer || express();
@@ -37,7 +36,6 @@ module.exports = function createServer(customServer) {
 
   server.use("/sf", singleFileUpload);
   server.use("/mf", multiFileUpload);
-  server.use(express.static(cwd + "/public"));
   server.use(express.json({ limit: "5mb" }));
 
   !customServer &&
