@@ -61,7 +61,7 @@ module.exports = function ServiceRequestHandler(
         console.log(err);
         errCount++;
         if (reconnectModule) reconnectModule(() => tryRequest(cb, errCount));
-        else Service.reconnectService(() => tryRequest(cb, errCount));
+        else Service.resetConnection(() => tryRequest(cb, errCount));
       } else console.error(Error(`[SystemLynx][Service][Error]: Invalid route:${err}`));
     };
 
