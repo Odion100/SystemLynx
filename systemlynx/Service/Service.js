@@ -42,7 +42,7 @@ module.exports = function createService(
 
     if (typeof constructor === "function") {
       if (constructor.constructor.name === "AsyncFunction")
-        throw `[SystemLynx][Module][Error]: Module(name, constructor) function cannot receive an async function as the constructor`;
+        throw `[SystemLynx][Service][Error]: Module(name, constructor) function cannot receive an async function as the constructor`;
 
       const Module = createDispatcher.apply({ ...systemContext, before }, [
         undefined,

@@ -58,11 +58,13 @@ module.exports = function ServiceRequestHandler(
       if (err.SystemLynxService) {
         cb(err);
       } else if (errCount <= 3) {
-        console.log(err);
         errCount++;
         if (reconnectModule) reconnectModule(() => tryRequest(cb, errCount));
         else Service.resetConnection(() => tryRequest(cb, errCount));
-      } else console.error(Error(`[SystemLynx][Service][Error]: Invalid route:${err}`));
+      } else {
+        console.error(`[SystemLynx][ServiceRequestHandler][Error]: ${err.message}\n`);
+        console.error(err);
+      }
     };
 
     return new Promise((resolve, reject) =>

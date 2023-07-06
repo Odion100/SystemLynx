@@ -69,7 +69,7 @@ module.exports = function createRouter(server, config) {
 
     if (typeof Module[fn] !== "function")
       return sendResponse({
-        message: `[SystemLynx][error]:${module_name}.${fn} method not found`,
+        message: `[SystemLynx][Router][Error]:${module_name}.${fn} method not found`,
         status: 404,
       });
 

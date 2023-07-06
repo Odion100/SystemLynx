@@ -14,7 +14,7 @@ module.exports = function loadConnectionData(
           setTimeout(() => getData(resolve, reject), errors.length * wait);
         else {
           console.error(
-            `[SystemLynx][Client][Error]: Failed to load Service @${url} after ${errors.length} attempts.`
+            `[SystemLynx][Client]: Failed to load Service @${url} after ${errors.length} attempts.\n`
           );
           reject(err);
         }

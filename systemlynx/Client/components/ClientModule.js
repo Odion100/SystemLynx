@@ -22,12 +22,16 @@ module.exports = function SystemLynxClientModule(
   ClientModule.__setConnection(host, port, route, namespace);
 
   const reconnectModule = async (cb) => {
-    const url = connectionData.serviceUrl + `?modules=${name}`;
-    const { modules, port, host } = await loadConnectionData(url);
-    const { namespace, route } = modules[0];
-    ClientModule.__setConnection(host, port, route, namespace);
+    try {
+      const url = connectionData.serviceUrl + `?modules=${name}`;
+      const { modules, port, host } = await loadConnectionData(url);
+      const { namespace, route } = modules[0];
+      ClientModule.__setConnection(host, port, route, namespace);
 
-    if (typeof cb === "function") cb();
+      if (typeof cb === "function") cb();
+    } catch (error) {
+      console.error(`[SystemLynx][ClientModule]: Failed to reconnect service @${url}`);
+    }
   };
   const protocol = getProtocol(serviceUrl);
   methods.forEach(({ method, fn }) => {

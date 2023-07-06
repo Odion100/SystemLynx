@@ -32,21 +32,27 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
     Client.cachedServices[connData.serviceUrl] = Service;
 
     Service.resetConnection = async (cb) => {
-      const { modules, host, port, namespace } = await loadConnectionData(
-        httpClient,
-        connData.serviceUrl
-      );
-      SocketDispatcher.apply(Service, [namespace, events, systemContext]);
+      try {
+        const { modules, host, port, namespace } = await loadConnectionData(
+          httpClient,
+          connData.serviceUrl
+        );
+        SocketDispatcher.apply(Service, [namespace, events, systemContext]);
 
-      modules.forEach(({ namespace, route, name }) => {
-        if (Service[name]) {
-          Service[name].__setConnection(host, port, route, namespace);
-          Service[name].emit("reconnect");
-        }
-      });
+        modules.forEach(({ namespace, route, name }) => {
+          if (Service[name]) {
+            Service[name].__setConnection(host, port, route, namespace);
+            Service[name].emit("reconnect");
+          }
+        });
 
-      Service.emit("reconnect");
-      if (typeof cb === "function") cb();
+        Service.emit("reconnect");
+        if (typeof cb === "function") cb();
+      } catch (error) {
+        console.error(
+          `[SystemLynx][Client]: Failed to reconnect service @${connData.serviceUrl}`
+        );
+      }
     };
 
     connData.modules.forEach(

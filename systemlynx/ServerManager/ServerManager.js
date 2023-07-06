@@ -78,7 +78,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     return new Promise((resolve) => {
       const _server = ssl ? createSSLServer(server, ssl) : server;
       _server.listen(port, () => {
-        console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}`);
+        console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}\n`);
         moduleQueue.forEach(({ name, Module, reserved_methods }) =>
           ServerManager.addModule(name, Module, reserved_methods)
         );
