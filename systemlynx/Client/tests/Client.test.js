@@ -175,7 +175,7 @@ describe("Service", () => {
     const useREST = true;
     Service.module("restTester", function () {
       this.get = (data) => ({ REST_TEST_PASSED: true, getResponse: true, ...data });
-      this.put = () => ({ REST_TEST_PASSED: true, putResponse: true });
+      this.put = (data) => ({ REST_TEST_PASSED: true, putResponse: true, ...data });
       this.post = () => ({ REST_TEST_PASSED: true, postResponse: true });
       this.delete = () => ({ REST_TEST_PASSED: true, deleteResponse: true });
     });
@@ -183,7 +183,7 @@ describe("Service", () => {
     await Service.startService({ route, port, useREST });
     const buAPI = await Client.loadService(url);
     const getResponse = await buAPI.restTester.get({ name: "GET TEST", id: 12 });
-    const putResponse = await buAPI.restTester.put();
+    const putResponse = await buAPI.restTester.put({ name: "PUT TEST", id: 13 });
     const postResponse = await buAPI.restTester.post();
     const deleteResponse = await buAPI.restTester.delete();
 
@@ -193,7 +193,12 @@ describe("Service", () => {
       name: "GET TEST",
       id: 12,
     });
-    expect(putResponse).to.deep.equal({ REST_TEST_PASSED: true, putResponse: true });
+    expect(putResponse).to.deep.equal({
+      REST_TEST_PASSED: true,
+      putResponse: true,
+      name: "PUT TEST",
+      id: 13,
+    });
     expect(postResponse).to.deep.equal({ REST_TEST_PASSED: true, postResponse: true });
     expect(deleteResponse).to.deep.equal({
       REST_TEST_PASSED: true,

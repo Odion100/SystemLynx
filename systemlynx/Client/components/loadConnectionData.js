@@ -5,20 +5,22 @@ module.exports = function loadConnectionData(
 ) {
   const errors = [];
 
-  return new Promise(function getData(resolve, reject) {
-    httpClient.request({ method: "GET", url }, (err, results) => {
-      if (err) {
-        errors.push(err);
+  return new Promise(async function getData(resolve, reject) {
+    try {
+      const results = await httpClient.request({ method: "get", url });
+      resolve(results);
+    } catch (error) {
+      errors.push(error);
 
-        if (errors.length < limit)
-          setTimeout(() => getData(resolve, reject), errors.length * wait);
-        else {
-          console.error(
-            `[SystemLynx][Client]: Failed to load Service @${url} after ${errors.length} attempts.\n`
-          );
-          reject(err);
-        }
-      } else resolve(results);
-    });
+      if (errors.length < limit)
+        setTimeout(() => getData(resolve, reject), errors.length * wait);
+      else {
+        console.error(
+          `[SystemLynx][Client]: Failed to load Service @${url} after ${errors.length} attempts.\n`
+        );
+        console.error(errors);
+        reject(errors);
+      }
+    }
   });
 };

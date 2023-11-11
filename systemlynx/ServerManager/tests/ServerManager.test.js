@@ -289,7 +289,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
 
     const result3 = await new Promise((resolve) => {
       request(
-        { url: `${url}/${name}/test`, json: true, method: "PUT" },
+        { url: `${url}/${name}/test`, json: true, method: "post" },
         (err, res, body) => {
           resolve(body);
         }

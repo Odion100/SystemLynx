@@ -33,9 +33,13 @@ module.exports = function createServer(customServer) {
       res.on("finish", clearTempFolder);
       next();
     });
-
-  server.use("/sf", singleFileUpload);
-  server.use("/mf", multiFileUpload);
+  const parseArguments = (req, res, next) => {
+    const { __arguments } = req.body;
+    if (__arguments) req.body.__arguments = JSON.parse(__arguments);
+    next();
+  };
+  server.use("/sf", singleFileUpload, parseArguments);
+  server.use("/mf", multiFileUpload, parseArguments);
   server.use(express.json({ limit: "5mb" }));
 
   !customServer &&

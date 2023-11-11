@@ -4,6 +4,7 @@ module.exports = TestServerSetup = (port, done) => {
 
   const response = (req, res) => {
     const { body, method } = req;
+    console.log("body --->", body);
     body.testPassed = true;
     res.json({ method, ...body });
   };
@@ -12,14 +13,14 @@ module.exports = TestServerSetup = (port, done) => {
     const { file } = req;
     const json = JSON.parse(fs.readFileSync(file.path));
 
-    res.json({ file, ...json });
+    res.json({ file, ...json, ...req.body });
   };
 
   const multiUploadResponse = (req, res) => {
     const { files } = req;
     const json = JSON.parse(fs.readFileSync(files[0].path));
 
-    res.json({ files, ...json });
+    res.json({ files, ...json, ...req.body });
   };
 
   server.get("/test", response);

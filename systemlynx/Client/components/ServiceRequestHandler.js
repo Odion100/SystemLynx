@@ -42,16 +42,19 @@ module.exports = function ServiceRequestHandler(
           })
           .then((results) => cb(null, results))
           .catch((err) => ErrorHandler(err, errCount, cb));
-      else
+      else {
+        if (file) delete __arguments[0].file;
+        if (files) delete __arguments[0].files;
         httpClient
           .upload({
             url,
             method,
-            formData: { ...__arguments[0], __arguments },
+            formData: { file, files, __arguments },
             headers,
           })
           .then((results) => cb(null, results))
           .catch((err) => ErrorHandler(err, errCount, cb));
+      }
     };
 
     const ErrorHandler = (err, errCount, cb) => {

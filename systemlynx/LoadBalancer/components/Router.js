@@ -11,15 +11,18 @@ module.exports = function Router(server) {
       if (locations.length === 0)
         return res.status(404).json({
           message: `No services found on requested route: ${route}`,
-          locations
+          locations,
         });
 
       location_index++;
       location_index = location_index < locations.length ? location_index : 0;
       const url = locations[location_index];
-
-      HttpClient.request({ url }, (err, connData) => {
-        if (err) {
+      HttpClient.request({ url })
+        .then((connData) => {
+          res.json(connData);
+        })
+        .catch((err) => {
+          console.log(err);
           for (i = 0; i < locations.length; i++) {
             if (locations[i] === url) {
               locations.splice(i, 1);
@@ -28,8 +31,7 @@ module.exports = function Router(server) {
             }
           }
           recursiveGetService(req, res);
-        } else res.json(connData);
-      });
+        });
     }
   };
 

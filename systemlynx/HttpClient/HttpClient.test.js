@@ -20,37 +20,13 @@ describe("HttpSystemLynxClient Test", () => {
       .that.respondsTo("upload");
   });
 
-  it("should be able to make http requests using a callback", async () => {
-    const results = await new Promise((resolve, reject) => {
-      HttpClient.request(
-        {
-          method: "GET",
-          url: "http://localhost:4789/test",
-          body: { getWithCallback: true },
-        },
-        (err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        }
-      );
-    });
-
-    expect(results).to.be.an("Object").that.deep.equal({
-      getWithCallback: true,
-      testPassed: true,
-      method: "GET",
-    });
-  });
-
   it("should be able to make http requests using a promise", async () => {
     const results = await HttpClient.request({
       method: "GET",
       url,
-      body: { getWithPromise: true },
     });
 
     expect(results).to.be.an("Object").that.deep.equal({
-      getWithPromise: true,
       testPassed: true,
       method: "GET",
     });
@@ -60,11 +36,9 @@ describe("HttpSystemLynxClient Test", () => {
     const results = await HttpClient.request({
       method: "GET",
       url,
-      body: { getWithPromise: true },
     });
 
     expect(results).to.be.an("Object").that.deep.equal({
-      getWithPromise: true,
       testPassed: true,
       method: "GET",
     });
@@ -87,11 +61,9 @@ describe("HttpSystemLynxClient Test", () => {
     const results = await HttpClient.request({
       method: "DELETE",
       url,
-      body: { test: true },
     });
 
     expect(results).to.be.an("Object").that.deep.equal({
-      test: true,
       testPassed: true,
       method: "DELETE",
     });
@@ -101,7 +73,7 @@ describe("HttpSystemLynxClient Test", () => {
     const file = fs.createReadStream(__dirname + "/test.file.json");
     const results = await HttpClient.upload({
       url: singleFileUrl,
-      formData: { file },
+      formData: { file, __arguments: [{ uploadArguments: true }] },
     });
 
     expect(results).to.be.an("Object").that.has.property("testPassed", true);
@@ -109,6 +81,7 @@ describe("HttpSystemLynxClient Test", () => {
       .to.have.property("file")
       .that.is.an("Object")
       .that.has.property("originalname", "test.file.json");
+    expect(results.__arguments).to.deep.equal([{ uploadArguments: true }]);
   });
 
   it("should be able to upload multiple files", async () => {
@@ -116,12 +89,14 @@ describe("HttpSystemLynxClient Test", () => {
       fs.createReadStream(__dirname + "/test.file.json"),
       fs.createReadStream(__dirname + "/test.file.json"),
     ];
-    const multiUploadResponse = await HttpClient.upload({
+    const results = await HttpClient.upload({
       url: multiFileUrl,
-      formData: { files },
+      formData: { files, __arguments: [{ multiUploadArguments: true }] },
     });
-    expect(multiUploadResponse).to.be.an("Object").that.has.property("testPassed", true);
-    expect(multiUploadResponse).to.have.property("files").that.is.an("Array");
-    expect(multiUploadResponse).to.have.property("fileUploadTest", true);
+
+    expect(results).to.be.an("Object").that.has.property("testPassed", true);
+    expect(results).to.have.property("files").that.is.an("Array");
+    expect(results).to.have.property("fileUploadTest", true);
+    expect(results.__arguments).to.deep.equal([{ multiUploadArguments: true }]);
   });
 });

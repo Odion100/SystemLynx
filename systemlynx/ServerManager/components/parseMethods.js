@@ -8,7 +8,7 @@ const parseMethods = (obj, reserved_methods = [], useREST) => {
       const method =
         useREST && REST_methods.indexOf(fn.toLocaleLowerCase()) > -1
           ? fn.toLocaleLowerCase()
-          : "put";
+          : "post";
       methods.push({ method, fn });
     }
   });
