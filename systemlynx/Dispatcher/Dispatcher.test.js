@@ -6,9 +6,10 @@ describe("createDispatcher", () => {
   it("should return an EventDispatcher object with methods on and emit", async () => {
     expect(dispatcher)
       .to.be.an("object")
-      .that.has.all.keys("on", "emit")
+      .that.has.all.keys("on", "emit", "$clearEvent")
       .that.respondsTo("on")
-      .that.respondsTo("emit");
+      .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent");
   });
   it("Should be able to emit and handle events", (done) => {
     dispatcher.on("test", (data) => {

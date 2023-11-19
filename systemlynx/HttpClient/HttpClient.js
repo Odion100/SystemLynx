@@ -1,43 +1,35 @@
-"use strict";
-const httpClient = require("request");
-const json = true;
+const { isNode } = require("../../utils/ProcessChecker");
+const axios = require("axios").default;
+const FormData = require("form-data");
+const path = require("path");
 
-module.exports = function createClient() {
-  const Client = this || {};
-  Client.request = ({ method, url, body }, cb) => {
-    const tryRequest = (callback) => {
-      httpClient({ method, url, body, json }, (err, res, body) => {
-        if (err) callback(err);
-        else if (res.statusCode >= 400) callback(body);
-        else callback(null, body, res);
-      });
-    };
-    if (typeof cb === "function") tryRequest(cb);
-    else
-      return new Promise((resolve, reject) =>
-        tryRequest((err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        })
-      );
+module.exports = function createHttpClient() {
+  const Client = {};
+  Client.request = async ({ method = "get", url, body: data, headers }) => {
+    method = method.toLowerCase();
+    const res = await axios({ url, method, headers, data });
+    if (res.status >= 400) {
+      throw res.data;
+    } else return res.data;
   };
 
-  Client.upload = ({ url, formData }, cb) => {
-    const tryRequest = (callback) => {
-      httpClient.post({ url, formData, json }, (err, res, body) => {
-        if (err) callback(err);
-        else if (res.statusCode >= 400) callback(body);
-        else callback(null, body, res);
+  Client.upload = async ({ url, formData, headers }) => {
+    const { file, files, __arguments } = formData;
+    const form = new FormData();
+    if (file) form.append("file", file, isNode ? path.basename(file.path) : file.name);
+    if (files) {
+      files.forEach((file) => {
+        form.append("files", file, isNode ? path.basename(file.path) : file.name);
       });
-    };
-    if (typeof cb === "function") tryRequest(cb);
-    else
-      return new Promise((resolve, reject) =>
-        tryRequest((err, results) => {
-          if (err) reject(err);
-          else resolve(results);
-        })
-      );
+    }
+    if (__arguments) form.append("__arguments", JSON.stringify(__arguments));
+
+    const res = await axios.post(url, form, {
+      headers: { ...headers, "Content-Type": "multipart/form-data" },
+    });
+    if (res.status >= 400) {
+      throw res.data;
+    } else return res.data;
   };
 
   return Client;

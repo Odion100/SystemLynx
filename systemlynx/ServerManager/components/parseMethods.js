@@ -1,6 +1,6 @@
 const parseMethods = (obj, reserved_methods = [], useREST) => {
   const methods = [];
-  const REST_methods = ["get", "put", "post", "delete"];
+  const REST_methods = ["get", "put", "post", "delete", "options"];
   const props = Object.getOwnPropertyNames(obj);
 
   props.forEach((fn) => {
@@ -8,7 +8,7 @@ const parseMethods = (obj, reserved_methods = [], useREST) => {
       const method =
         useREST && REST_methods.indexOf(fn.toLocaleLowerCase()) > -1
           ? fn.toLocaleLowerCase()
-          : "put";
+          : "post";
       methods.push({ method, fn });
     }
   });

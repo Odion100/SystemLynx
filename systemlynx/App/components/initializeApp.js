@@ -7,9 +7,9 @@ module.exports = async function initApp(system, App, customClient, systemContext
     if (!configComplete)
       console.warn(
         `
-        continuationERROR: Failed to call continuation function in App Configuariotn module 
+        continuationERROR: Failed to call next function in App.config() callback 
         
-        Fix: Must call next function during App.config( constructor(=>next) )
+        Fix: Must call next function during App.config( callback(=>next) )
         
         `
       );

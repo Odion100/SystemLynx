@@ -5,7 +5,7 @@ const SocketEmitter = require("./components/SocketEmitter");
 const createWebSocket = require("./components/WebSocketServer");
 const parseMethods = require("./components/parseMethods");
 const shortId = require("shortid");
-const randomPort = () => parseInt(Math.random() * parseInt(Math.random() * 10000)) + 1023;
+const randomPort = () => Math.floor(Math.random() * (65535 - 49152 + 1)) + 49152;
 const createSSLServer = (app, options) => {
   const https = require("https");
   return https.createServer(options, app);
@@ -22,6 +22,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     useService: true,
     staticRouting: false,
     ssl: { key: "", cert: "" },
+    validators: { $all: [] },
   };
   const server = createServer(customServer);
   const router = createRouter(server, () => serverConfigurations);
@@ -77,7 +78,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     return new Promise((resolve) => {
       const _server = ssl ? createSSLServer(server, ssl) : server;
       _server.listen(port, () => {
-        console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}`);
+        console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}\n`);
         moduleQueue.forEach(({ name, Module, reserved_methods }) =>
           ServerManager.addModule(name, Module, reserved_methods)
         );
@@ -88,15 +89,24 @@ module.exports = function createServerManager(customServer, customWebSocketServe
   };
 
   ServerManager.addModule = (name, Module, reserved_methods = []) => {
-    const { host, route, serviceUrl, staticRouting, useService, useREST, socketPort } =
-      serverConfigurations;
+    const {
+      host,
+      route,
+      serviceUrl,
+      staticRouting,
+      useService,
+      useREST,
+      socketPort,
+      validators,
+    } = serverConfigurations;
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
-    const methods = parseMethods(Module, ["on", "emit", ...reserved_methods], useREST);
+    const exclude_methods = ["on", "emit", "before", "$clearEvent", ...reserved_methods];
+    const methods = parseMethods(Module, exclude_methods, useREST);
     const namespace = staticRouting ? name : shortId();
 
     SocketEmitter.apply(Module, [namespace, WebSocket]);
-
+    const _validators = [...validators.$all, ...(validators[name] || [])];
     if (useService) {
       const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
 
@@ -106,20 +116,47 @@ module.exports = function createServerManager(customServer, customWebSocketServe
         name,
         methods,
       });
-      methods.forEach((method) => router.addService(Module, path, method, name));
+      methods.forEach((method) => {
+        const nsp = `${name}.${method.fn}`;
+        const customValidators = [..._validators, ...(validators[nsp] || [])];
+        router.addService(Module, path, method, name, customValidators);
+      });
     }
     if (useREST)
       methods.forEach((method) => {
+        const nsp = `${name}.${method.fn}`;
+        const customValidators = [..._validators, ...(validators[nsp] || [])];
         switch (method.fn) {
           case "get":
           case "put":
           case "post":
           case "delete":
-            router.addREST(Module, `${route}/${name}`, method, name);
+            router.addREST(Module, `${route}/${name}`, method, name, customValidators);
         }
       });
   };
+  ServerManager.addMiddleware = (...args) => {
+    const name = typeof args[0] === "string" ? args.shift() : "$all";
+    args.forEach(async (middleware) => {
+      if (Array.isArray(middleware)) {
+        middleware.map(addMiddleware);
+      } else {
+        addMiddleware(middleware);
+      }
+    });
 
+    function addMiddleware(middleware) {
+      if (!serverConfigurations.validators[name])
+        serverConfigurations.validators[name] = [];
+      serverConfigurations.validators[name].push(async function (req, res, next) {
+        try {
+          await middleware(req, res, next);
+        } catch (error) {
+          res.sendError(error);
+        }
+      });
+    }
+  };
   return ServerManager;
 };
 

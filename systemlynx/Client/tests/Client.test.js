@@ -1,3 +1,4 @@
+const fs = require("fs");
 const { expect } = require("chai");
 const createClient = require("../Client");
 const createService = require("../../Service/Service");
@@ -5,6 +6,7 @@ const Service = createService();
 const port = 6757;
 const route = "service-test";
 const url = `http://localhost:${port}/${route}`;
+const TEST_FILE = process.cwd() + "/test.file.json";
 
 describe("createClient()", () => {
   it("should return a SystemLynx Client", () => {
@@ -41,18 +43,33 @@ describe("Client", () => {
 
     expect(buAPI)
       .to.be.an("object")
-      .that.has.all.keys("emit", "on", "resetConnection", "disconnect", "orders")
+      .that.has.all.keys(
+        "emit",
+        "on",
+        "$clearEvent",
+        "resetConnection",
+        "disconnect",
+        "headers",
+        "setHeaders",
+        "orders"
+      )
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("resetConnection")
-      .that.respondsTo("disconnect");
+      .that.respondsTo("disconnect")
+      .that.respondsTo("headers")
+      .that.respondsTo("setHeaders");
 
     expect(buAPI.orders)
       .to.be.an("object")
       .that.has.all.keys(
         "emit",
         "on",
+        "$clearEvent",
         "disconnect",
+        "headers",
+        "setHeaders",
         "__setConnection",
         "__connectionData",
         "action1",
@@ -61,8 +78,12 @@ describe("Client", () => {
         "noArgTest"
       )
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("headers")
+      .that.respondsTo("setHeaders")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("__setConnection")
       .that.respondsTo("__connectionData")
       .that.respondsTo("action1")
@@ -156,7 +177,7 @@ describe("Service", () => {
     const useREST = true;
     Service.module("restTester", function () {
       this.get = (data) => ({ REST_TEST_PASSED: true, getResponse: true, ...data });
-      this.put = () => ({ REST_TEST_PASSED: true, putResponse: true });
+      this.put = (data) => ({ REST_TEST_PASSED: true, putResponse: true, ...data });
       this.post = () => ({ REST_TEST_PASSED: true, postResponse: true });
       this.delete = () => ({ REST_TEST_PASSED: true, deleteResponse: true });
     });
@@ -164,7 +185,7 @@ describe("Service", () => {
     await Service.startService({ route, port, useREST });
     const buAPI = await Client.loadService(url);
     const getResponse = await buAPI.restTester.get({ name: "GET TEST", id: 12 });
-    const putResponse = await buAPI.restTester.put();
+    const putResponse = await buAPI.restTester.put({ name: "PUT TEST", id: 13 });
     const postResponse = await buAPI.restTester.post();
     const deleteResponse = await buAPI.restTester.delete();
 
@@ -174,7 +195,12 @@ describe("Service", () => {
       name: "GET TEST",
       id: 12,
     });
-    expect(putResponse).to.deep.equal({ REST_TEST_PASSED: true, putResponse: true });
+    expect(putResponse).to.deep.equal({
+      REST_TEST_PASSED: true,
+      putResponse: true,
+      name: "PUT TEST",
+      id: 13,
+    });
     expect(postResponse).to.deep.equal({ REST_TEST_PASSED: true, postResponse: true });
     expect(deleteResponse).to.deep.equal({
       REST_TEST_PASSED: true,
@@ -182,17 +208,13 @@ describe("Service", () => {
     });
   });
 
-  it("should be able to use 'useReturnValue' configuration option to enable synchronous return values from Module methods", async () => {
+  it("should be able to asynchronously return values from Module methods", async () => {
     const service = createService();
     const route = "sync/test";
     const port = 4920;
     const host = "localhost";
     const url = `http://localhost:${port}/${route}`;
-    service.module("AsyncMath", function () {
-      this.max = Math.max;
-      this.min = Math.min;
-      this.round = Math.round;
-    });
+    service.module("AsyncMath", Math);
 
     await service.startService({
       route,
@@ -207,5 +229,134 @@ describe("Service", () => {
     expect(results2).to.equal(2);
     const results3 = await AsyncMath.round(10.2);
     expect(results3).to.equal(10);
+  });
+
+  it("should send proper error responses", async () => {
+    const service = createService();
+    const route = "sync/test";
+    const port = 7860;
+    const host = "localhost";
+    const url = `http://localhost:${port}/${route}`;
+    service.module("ErrorTest", function () {
+      this.sendError = () => {
+        return { status: 404, message: "test error" };
+      };
+      this.throwError = () => {
+        throw Error("This is my error!");
+      };
+    });
+
+    await service.startService({
+      route,
+      port,
+      host,
+    });
+    const Client = createClient();
+    const { ErrorTest } = await Client.loadService(url);
+    try {
+      await ErrorTest.sendError();
+      throw Error("this test should throw before this point");
+    } catch (error) {
+      expect(error).to.deep.equal({
+        SystemLynxService: true,
+        fn: "sendError",
+        message: "test error",
+        module_name: "ErrorTest",
+        serviceUrl: "http://localhost:7860/sync/test",
+        status: 404,
+      });
+    }
+    try {
+      await ErrorTest.throwError();
+      throw Error("this test should throw before this point");
+    } catch (error) {
+      expect(error).to.deep.equal({
+        SystemLynxService: true,
+        fn: "throwError",
+        message: "This is my error!",
+        module_name: "ErrorTest",
+        serviceUrl: "http://localhost:7860/sync/test",
+        status: 500,
+      });
+    }
+  });
+
+  it("should be able pass a ReadStream or file path for upload the via property names file or files on an object in the first parameter", async () => {
+    const service = createService();
+    const route = "file-upload/test";
+    const port = 4568;
+    const host = "localhost";
+    const url = `http://localhost:${port}/${route}`;
+
+    service.module("storage", function () {
+      this.save = ({ file, files, message }) => {
+        return { file, files, message };
+      };
+    });
+    await service.startService({
+      route,
+      port,
+      host,
+    });
+
+    const Client = createClient();
+    const { storage } = await Client.loadService(url);
+
+    const singleFileResponse = await storage.save({
+      file: fs.createReadStream(TEST_FILE),
+      message: "single file upload test confirmation",
+    });
+    const multiFileResponse = await storage.save({
+      files: [TEST_FILE, fs.createReadStream(TEST_FILE)],
+      message: "multi file upload test confirmation",
+    });
+
+    expect(singleFileResponse).to.be.an("object").that.has.all.keys("file", "message");
+    expect(singleFileResponse.message).to.be.an("string");
+    expect(singleFileResponse.message).to.equal("single file upload test confirmation");
+    expect(singleFileResponse.file).to.be.an("object");
+    expect(singleFileResponse.file.originalname).to.equal("test.file.json");
+    expect(singleFileResponse.file.mimetype).to.equal("application/json");
+
+    expect(multiFileResponse).to.be.an("object").that.has.all.keys("files", "message");
+    expect(multiFileResponse.message).to.be.an("string");
+    expect(multiFileResponse.message).to.equal("multi file upload test confirmation");
+    expect(multiFileResponse.files).to.be.an("array");
+    expect(multiFileResponse.files[0]).to.be.an("object");
+    expect(multiFileResponse.files[1]).to.be.an("object");
+    expect(multiFileResponse.files[0].originalname).to.equal("test.file.json");
+    expect(multiFileResponse.files[1].mimetype).to.equal("application/json");
+  });
+
+  it("should maintain service and module level headers on a Client instance", async () => {
+    const service = createService();
+    const route = "setHeaders/test";
+    const port = 4999;
+    const host = "localhost";
+    const url = `http://localhost:${port}/${route}`;
+    service.module("Test", function () {
+      this.getHeaders = function () {
+        return this.req.headers.origin;
+      };
+    });
+    service.module("Test2", function () {
+      this.getHeaders = function () {
+        return this.req.headers.origin;
+      };
+    });
+
+    await service.startService({ route, port, host });
+
+    const Client = createClient();
+    const myService = await Client.loadService(url);
+    myService.setHeaders({ Origin: `http://localhost:${port}` });
+    myService.Test.setHeaders({ Origin: `http://localhost:${port + 1}` });
+
+    //because a module level headers were set for Test then I expect what was set
+    // for The Test2 module I expect the Service level header to be applied
+    const results = await myService.Test.getHeaders();
+    expect(results).to.equal(`http://localhost:${port + 1}`);
+    const results2 = await myService.Test2.getHeaders();
+    expect(results2).to.equal(`http://localhost:${port}`);
   });
 });

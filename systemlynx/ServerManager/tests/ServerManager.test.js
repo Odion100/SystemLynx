@@ -8,9 +8,16 @@ describe("createServerManager function", () => {
 
     expect(ServerManager)
       .to.be.an("Object")
-      .that.has.all.keys(["startService", "addModule", "server", "WebSocket"])
+      .that.has.all.keys([
+        "startService",
+        "addModule",
+        "addMiddleware",
+        "server",
+        "WebSocket",
+      ])
       .that.respondsTo("startService")
-      .that.respondsTo("addModule");
+      .that.respondsTo("addModule")
+      .that.respondsTo("addMiddleware");
   });
 });
 describe("ServerManager", () => {
@@ -123,7 +130,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
     const url = `http://localhost:${port}${route}`;
     const name = "testObject";
     const object = {
-      get: () => (null, { REST_TEST_PASSED: true }),
+      get: () => ({ REST_TEST_PASSED: true }),
       put: () => {},
       post: () => {},
       delete: () => {},
@@ -190,6 +197,112 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       module_name: "testObject",
       serviceUrl: "http://localhost:2233/testAPI",
       status: 200,
+    });
+  });
+
+  it("should be able to use the ServerManager.addMiddleware method to add additional route handling", async () => {
+    const ServerManager = createServerManager();
+    const route = "/testAPI";
+    const port = 5454;
+    const url = `http://localhost:${port}${route}`;
+    const name = "testObject";
+    const object = {
+      get: function () {
+        const { req } = this;
+        return {
+          SERVICE_TEST_PASSED: true,
+          $allHandlerAdded: req.$allHandlerAdded,
+          putHandlerAdded: req.putHandlerAdded,
+        };
+      },
+      put: function () {
+        const { req } = this;
+        return {
+          SERVICE_TEST_PASSED: true,
+          $allHandlerAdded: req.$allHandlerAdded,
+          putHandlerAdded: req.putHandlerAdded,
+        };
+      },
+      test: function () {
+        return { SERVICE_TEST_PASSED: false };
+      },
+    };
+
+    ServerManager.addMiddleware((req, res, next) => {
+      req.$allHandlerAdded = true;
+      next();
+    });
+    ServerManager.addMiddleware(`${name}.put`, (req, res, next) => {
+      req.putHandlerAdded = true;
+      next();
+    });
+    ServerManager.addMiddleware(`${name}.test`, (req, res, next) => {
+      res.sendError({ status: 400, message: "tested passed" });
+    });
+    ServerManager.addModule(name, object);
+    await ServerManager.startService({
+      route,
+      port,
+      staticRouting: true,
+      useREST: true,
+    });
+
+    const results = await new Promise((resolve) => {
+      request({ url: `${url}/${name}/get`, json: true }, (err, res, body) => {
+        resolve(body);
+      });
+    });
+
+    expect(results).to.deep.equal({
+      returnValue: {
+        SERVICE_TEST_PASSED: true,
+        $allHandlerAdded: true,
+      },
+      fn: "get",
+      message: "[SystemLynx][response]: testObject.get(...) returned successfully",
+      module_name: "testObject",
+      serviceUrl: "http://localhost:5454/testAPI",
+      status: 200,
+    });
+
+    const result2 = await new Promise((resolve) => {
+      request(
+        { url: `${url}/${name}/put`, json: true, method: "PUT" },
+        (err, res, body) => {
+          resolve(body);
+        }
+      );
+    });
+
+    expect(result2).to.deep.equal({
+      returnValue: {
+        SERVICE_TEST_PASSED: true,
+        $allHandlerAdded: true,
+        putHandlerAdded: true,
+      },
+      fn: "put",
+      message: "[SystemLynx][response]: testObject.put(...) returned successfully",
+      module_name: "testObject",
+      serviceUrl: "http://localhost:5454/testAPI",
+      status: 200,
+    });
+
+    const result3 = await new Promise((resolve) => {
+      request(
+        { url: `${url}/${name}/test`, json: true, method: "post" },
+        (err, res, body) => {
+          resolve(body);
+        }
+      );
+    });
+
+    expect(result3).to.deep.equal({
+      message: "tested passed",
+      fn: "test",
+      module_name: "testObject",
+      serviceUrl: "http://localhost:5454/testAPI",
+      status: 400,
+      SystemLynxService: true,
     });
   });
 });

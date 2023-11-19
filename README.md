@@ -1,6 +1,6 @@
 # SystemLynx JS ![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg) ![JS 100%](https://img.shields.io/badge/JavaScript-100%25-green)
 
-SystemLynx is a framework for developing modular web APIs in NodeJS. It's a wrapper on top of ExpressJS and Socket.io. With SystemLynx, instead of creating a server with many endpoints, you can simply create objects and load those objects from a server into a client application. Basically any objects hosted by a SystemLynx Service can be loaded and used by a SystemLynx Client.
+SystemLynx is a NodeJS framework for building modular web APIs, built on top of ExpressJS and Socket.io. It allows you to create objects and load them from a server into a client application.
 
 SystemLynx comes with the following objects that are used for web app development:
 
@@ -8,11 +8,9 @@ SystemLynx comes with the following objects that are used for web app developmen
 const { App, Service, Client, LoadBalancer } = require("systemlynx");
 ```
 
-Call `require("systemlynx")` and destructrue from the object it returns. The main abstractions used for client-to-server interactions are the following:
-
 - **Service** - Used to create and host objects that can be loaded and used by a SystemLynx Client.
-- **Client** - Used in a client application to load a **Service**, which contains all the objects added to the **Service**.
-- **App** - Provides a modular interface and lifecycle methods for asynchronously creating and loading **Services**.
+- **Client** - Used in a client application to load a **Service**, providing access to all the objects hosted by the **Service**.
+- **App** - provides a modular interface for creating and loading Services.
 
 Find the full [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/API.md#tasksjs-api-documentation) here.
 

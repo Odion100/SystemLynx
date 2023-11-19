@@ -9,14 +9,33 @@ describe("LoadBalancer()", () => {
   it("should return a SystemLynx LoadBalancer", () => {
     expect(LoadBalancer)
       .to.be.an("object")
-      .that.has.all.keys("startService", "server", "WebSocket", "module", "clones")
+      .that.has.all.keys(
+        "startService",
+        "server",
+        "WebSocket",
+        "module",
+        "clones",
+        "before"
+      )
       .that.respondsTo("startService")
-      .that.respondsTo("module");
+      .that.respondsTo("module")
+      .that.respondsTo("before");
     expect(LoadBalancer.clones)
       .to.be.an("object")
-      .that.has.all.keys("on", "emit", "clones", "register", "dispatch", "assignDispatch")
+      .that.has.all.keys(
+        "on",
+        "emit",
+        "$clearEvent",
+        "before",
+        "clones",
+        "register",
+        "dispatch",
+        "assignDispatch"
+      )
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
+      .that.respondsTo("before")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")
       .that.respondsTo("assignDispatch")
@@ -71,6 +90,8 @@ describe("LoadBalancer.clones (Module)", () => {
         "on",
         "emit",
         "$emit",
+        "$clearEvent",
+        "before",
         "register",
         "dispatch",
         "assignDispatch",
@@ -78,6 +99,8 @@ describe("LoadBalancer.clones (Module)", () => {
       )
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
+      .that.respondsTo("before")
       .that.respondsTo("$emit")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")

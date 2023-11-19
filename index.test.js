@@ -35,6 +35,8 @@ describe("SystemLynx Objects", () => {
         "module",
         "on",
         "emit",
+        "$clearEvent",
+        "before",
         "use",
         "startService",
         "loadService",
@@ -46,6 +48,8 @@ describe("SystemLynx Objects", () => {
       .that.respondsTo("module")
       .that.respondsTo("on")
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
+      .that.respondsTo("before")
       .that.respondsTo("use")
       .that.respondsTo("startService")
       .that.respondsTo("loadService")
@@ -71,14 +75,33 @@ describe("SystemLynx Objects", () => {
   it("should return a SystemLynx LoadBalancer", () => {
     expect(LoadBalancer)
       .to.be.an("object")
-      .that.has.all.keys("startService", "server", "WebSocket", "clones", "module")
+      .that.has.all.keys(
+        "startService",
+        "server",
+        "WebSocket",
+        "clones",
+        "module",
+        "before"
+      )
       .that.respondsTo("startService")
-      .that.respondsTo("module");
+      .that.respondsTo("module")
+      .that.respondsTo("before");
     expect(LoadBalancer.clones)
       .to.be.an("object")
-      .that.has.all.keys("on", "emit", "clones", "register", "dispatch", "assignDispatch")
+      .that.has.all.keys(
+        "before",
+        "on",
+        "emit",
+        "$clearEvent",
+        "clones",
+        "register",
+        "dispatch",
+        "assignDispatch"
+      )
       .that.respondsTo("emit")
+      .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
+      .that.respondsTo("before")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")
       .that.respondsTo("assignDispatch")
@@ -89,9 +112,16 @@ describe("SystemLynx Objects", () => {
   it("should return a SystemLynx ServerManager instance", () => {
     expect(ServerManager)
       .to.be.an("Object")
-      .that.has.all.keys(["startService", "addModule", "server", "WebSocket"])
+      .that.has.all.keys([
+        "startService",
+        "addModule",
+        "addMiddleware",
+        "server",
+        "WebSocket",
+      ])
       .that.respondsTo("startService")
-      .that.respondsTo("addModule");
+      .that.respondsTo("addModule")
+      .that.respondsTo("addMiddleware");
   });
 
   it("should return a new instance of a Service", () => {
