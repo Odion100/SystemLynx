@@ -1,4 +1,7 @@
 "use strict";
+
+const { isNode } = require("../../../utils/ProcessChecker");
+const { convertToReadStream } = require("../components/convertToReadStream");
 const isObject = (value) =>
   typeof value === "object" ? (!value ? false : !Array.isArray(value)) : false;
 const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
@@ -15,41 +18,43 @@ module.exports = function ServiceRequestHandler(
   Service,
   reconnectModule
 ) {
-  const ClientModule = this;
   return function sendRequest() {
     const __arguments = Array.from(arguments);
 
     const tryRequest = (cb, errCount = 0) => {
-      const { route, port, host } = ClientModule.__connectionData();
+      const { route, port, host } = this.__connectionData();
       const singleFileURL = `${protocol}${host}:${port}/sf${route}/${fn}`;
       const multiFileURL = `${protocol}${host}:${port}/mf${route}/${fn}`;
       const defaultURL = `${protocol}${host}:${port}${route}/${fn}`;
       const { file, files } = __arguments[0] || {};
       const url = file ? singleFileURL : files ? multiFileURL : defaultURL;
-      const defaultHeaders = ClientModule.headers();
+      const defaultHeaders = this.headers();
       const headers = !isEmpty(defaultHeaders) ? defaultHeaders : Service.headers();
-      if (url === defaultURL)
+      if (url === defaultURL) {
+        const query =
+          method === "get" && isObject(__arguments[0]) ? makeQuery(__arguments[0]) : "";
         httpClient
           .request({
-            url: `${url}${
-              method === "get" && isObject(__arguments[0])
-                ? makeQuery(__arguments[0])
-                : ""
-            }`,
+            url: `${url}${query}`,
             method,
             body: { __arguments },
             headers,
           })
           .then((results) => cb(null, results))
           .catch((err) => ErrorHandler(err, errCount, cb));
-      else {
-        if (file) delete __arguments[0].file;
-        if (files) delete __arguments[0].files;
+      } else {
+        delete __arguments[0].file;
+        delete __arguments[0].files;
+        const formData = {};
+        formData.__arguments = __arguments;
+        if (file) formData.file = isNode ? convertToReadStream(file) : file;
+        if (Array.isArray(files))
+          formData.files = isNode ? files.map(convertToReadStream) : files;
         httpClient
           .upload({
             url,
             method,
-            formData: { file, files, __arguments },
+            formData,
             headers,
           })
           .then((results) => cb(null, results))
@@ -58,8 +63,10 @@ module.exports = function ServiceRequestHandler(
     };
 
     const ErrorHandler = (err, errCount, cb) => {
-      if (err.SystemLynxService) {
-        cb(err);
+      if (!err.isAxiosError) {
+        throw err;
+      } else if (err.response.data.SystemLynxService) {
+        cb(err.response.data);
       } else if (errCount <= 3) {
         errCount++;
         if (reconnectModule) reconnectModule(() => tryRequest(cb, errCount));

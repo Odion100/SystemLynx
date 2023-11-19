@@ -7,7 +7,7 @@ module.exports = function loadConnectionData(
 
   return new Promise(async function getData(resolve, reject) {
     try {
-      const results = await httpClient.request({ method: "get", url });
+      const results = await httpClient.request({ url });
       resolve(results);
     } catch (error) {
       errors.push(error);

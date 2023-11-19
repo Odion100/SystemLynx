@@ -76,7 +76,7 @@ module.exports = function createRouter(server, config) {
     const getArguments = () => {
       const args = body.__arguments || [];
       if (!isEmpty(query) && !args.length) args.push(query);
-      if (isObject(args[0]) && method === "PUT")
+      if (isObject(args[0]) && method === "POST")
         args[0] = { ...args[0], ...(file && { file }), ...(files && { files }) };
       return args;
     };

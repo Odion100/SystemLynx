@@ -115,13 +115,13 @@ describe("SystemLynx Objects", () => {
       .that.has.all.keys([
         "startService",
         "addModule",
-        "addRouteHandler",
+        "addMiddleware",
         "server",
         "WebSocket",
       ])
       .that.respondsTo("startService")
       .that.respondsTo("addModule")
-      .that.respondsTo("addRouteHandler");
+      .that.respondsTo("addMiddleware");
   });
 
   it("should return a new instance of a Service", () => {

@@ -1,6 +1,8 @@
-//express server, socket.io server and middleware needed for SystemLynx basic functionality
-const clearFolder = require("./clearFolder");
-const clearTempFolder = clearFolder.bind({}, "./temp");
+const fs = require("fs");
+const TEMP_FOLDER = `${__dirname}/temp`;
+const { ensureDir, clearFolder } = require("./utils");
+ensureDir(TEMP_FOLDER);
+
 module.exports = function createServer(customServer) {
   //express server
   const express = require("express");
@@ -8,13 +10,14 @@ module.exports = function createServer(customServer) {
   //express middleware
   const multer = require("multer");
   //express file upload middleware setup
-  const TEMP_LOCATION = "./temp";
+
   const mime = require("mime");
   const shortId = require("shortid");
   const storage = multer.diskStorage({
-    destination: (req, file, cb) => cb(null, TEMP_LOCATION),
-    filename: (req, file, cb) =>
-      cb(null, `${shortId()}.${mime.getExtension(file.mimetype)}`),
+    destination: (req, file, cb) => cb(null, TEMP_FOLDER),
+    filename: (req, file, cb) => {
+      return cb(null, `${shortId()}.${mime.getExtension(file.mimetype)}`);
+    },
   });
   //multi-file and single-file upload middleware functions
   const sf = multer({ storage }).single("file");
@@ -24,13 +27,13 @@ module.exports = function createServer(customServer) {
   const singleFileUpload = (req, res, next) =>
     sf(req, res, (err) => {
       if (err) return res.json(err);
-      res.on("finish", clearTempFolder);
+      res.on("finish", () => fs.unlink(req.file.path, () => {}));
       next();
     });
   const multiFileUpload = (req, res, next) =>
     mf(req, res, (err) => {
       if (err) return res.json(err);
-      res.on("finish", clearTempFolder);
+      res.on("finish", () => clearFolder(TEMP_FOLDER));
       next();
     });
   const parseArguments = (req, res, next) => {

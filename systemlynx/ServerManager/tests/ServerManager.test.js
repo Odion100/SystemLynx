@@ -11,13 +11,13 @@ describe("createServerManager function", () => {
       .that.has.all.keys([
         "startService",
         "addModule",
-        "addRouteHandler",
+        "addMiddleware",
         "server",
         "WebSocket",
       ])
       .that.respondsTo("startService")
       .that.respondsTo("addModule")
-      .that.respondsTo("addRouteHandler");
+      .that.respondsTo("addMiddleware");
   });
 });
 describe("ServerManager", () => {
@@ -200,7 +200,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
     });
   });
 
-  it("should be able to use the ServerManager.addRouteHandler method to add additional route handling", async () => {
+  it("should be able to use the ServerManager.addMiddleware method to add additional route handling", async () => {
     const ServerManager = createServerManager();
     const route = "/testAPI";
     const port = 5454;
@@ -228,15 +228,15 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       },
     };
 
-    ServerManager.addRouteHandler((req, res, next) => {
+    ServerManager.addMiddleware((req, res, next) => {
       req.$allHandlerAdded = true;
       next();
     });
-    ServerManager.addRouteHandler(`${name}.put`, (req, res, next) => {
+    ServerManager.addMiddleware(`${name}.put`, (req, res, next) => {
       req.putHandlerAdded = true;
       next();
     });
-    ServerManager.addRouteHandler(`${name}.test`, (req, res, next) => {
+    ServerManager.addMiddleware(`${name}.test`, (req, res, next) => {
       res.sendError({ status: 400, message: "tested passed" });
     });
     ServerManager.addModule(name, object);

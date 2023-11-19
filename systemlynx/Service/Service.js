@@ -8,8 +8,8 @@ module.exports = function createService(
   systemContext = {}
 ) {
   const ServerManager = createServerManager(customServer, customWebSocketServer);
-  const { startService, addRouteHandler, server, WebSocket } = ServerManager;
-  const Service = { startService, server, WebSocket, before: addRouteHandler };
+  const { startService, addMiddleware, server, WebSocket } = ServerManager;
+  const Service = { startService, server, WebSocket, before: addMiddleware };
 
   Service.module = function (name, constructor, reserved_methods = []) {
     const exclude_methods = reserved_methods.concat(
@@ -19,9 +19,9 @@ module.exports = function createService(
       if (typeof args[0] === "string") {
         const arg1 = args.shift();
         const fn = arg1 === "$all" ? "" : `.${arg1}`;
-        addRouteHandler(`${name}${fn}`, ...args);
+        addMiddleware(`${name}${fn}`, ...args);
       } else {
-        addRouteHandler(`${name}`, ...args);
+        addMiddleware(`${name}`, ...args);
       }
     };
     if (typeof constructor === "object" && constructor instanceof Object) {

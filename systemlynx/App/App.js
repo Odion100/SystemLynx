@@ -1,5 +1,4 @@
 "use strict";
-const { isNode } = require("../../utils/ProcessChecker");
 const createService = require("../Service/Service");
 const createDispatcher = require("../Dispatcher/Dispatcher");
 const initializeApp = require("./components/initializeApp");
@@ -11,6 +10,7 @@ module.exports = function createApp(server, WebSocket, customClient) {
   const systemContext = SystemLynxContext(system);
   const App = new createDispatcher(undefined, systemContext);
   const plugins = [];
+
   const init = () => {
     plugins.forEach((plugin) => {
       if (typeof plugin === "function") plugin.apply({}, [App, system]);
@@ -23,32 +23,30 @@ module.exports = function createApp(server, WebSocket, customClient) {
     init();
   }, 0);
 
-  if (isNode) {
-    system.Service = createService(server, WebSocket, systemContext);
+  system.Service = createService(server, WebSocket, systemContext);
+  App.server = system.Service.server;
+  App.WebSocket = system.Service.WebSocket;
 
-    App.startService = (options) => {
-      system.routing = options;
-      if (!timeoutId) {
-        timeoutId = setTimeout(() => {
-          timeoutId = null;
-          init();
-        }, 0);
-      }
-      return App;
-    };
+  App.startService = (options) => {
+    system.routing = options;
+    if (!timeoutId) {
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
+        init();
+      }, 0);
+    }
+    return App;
+  };
 
-    App.module = (name, __constructor) => {
-      system.modules.push({ name, __constructor });
-      return App;
-    };
+  App.module = (name, __constructor) => {
+    system.modules.push({ name, __constructor });
+    return App;
+  };
 
-    App.before = (...args) => {
-      system.Service.before(...args);
-      return App;
-    };
-    App.server = system.Service.server;
-    App.WebSocket = system.Service.WebSocket;
-  }
+  App.before = (...args) => {
+    system.Service.before(...args);
+    return App;
+  };
 
   App.loadService = (name, url) => {
     system.services.push({ name, url, onLoad: null, client: {} });
@@ -75,5 +73,6 @@ module.exports = function createApp(server, WebSocket, customClient) {
     plugins.push(plugin);
     return App;
   };
+
   return App;
 };

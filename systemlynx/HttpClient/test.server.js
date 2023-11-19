@@ -4,7 +4,6 @@ module.exports = TestServerSetup = (port, done) => {
 
   const response = (req, res) => {
     const { body, method } = req;
-    console.log("body --->", body);
     body.testPassed = true;
     res.json({ method, ...body });
   };

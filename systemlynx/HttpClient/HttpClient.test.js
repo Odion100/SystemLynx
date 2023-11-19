@@ -3,7 +3,7 @@ const fs = require("fs");
 const HttpSystemLynxClient = require("./HttpClient");
 const port = 4789;
 const testServerSetup = require("./test.server");
-//test server setup
+const TEST_FILE = process.cwd() + "/test.file.json";
 
 beforeAll(() => new Promise((resolve) => testServerSetup(port, resolve)));
 describe("HttpSystemLynxClient Test", () => {
@@ -70,7 +70,7 @@ describe("HttpSystemLynxClient Test", () => {
   });
 
   it("should be able to upload a file", async () => {
-    const file = fs.createReadStream(__dirname + "/test.file.json");
+    const file = fs.createReadStream(TEST_FILE);
     const results = await HttpClient.upload({
       url: singleFileUrl,
       formData: { file, __arguments: [{ uploadArguments: true }] },
@@ -85,10 +85,7 @@ describe("HttpSystemLynxClient Test", () => {
   });
 
   it("should be able to upload multiple files", async () => {
-    const files = [
-      fs.createReadStream(__dirname + "/test.file.json"),
-      fs.createReadStream(__dirname + "/test.file.json"),
-    ];
+    const files = [fs.createReadStream(TEST_FILE), fs.createReadStream(TEST_FILE)];
     const results = await HttpClient.upload({
       url: multiFileUrl,
       formData: { files, __arguments: [{ multiUploadArguments: true }] },

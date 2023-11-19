@@ -5,7 +5,7 @@ const SocketEmitter = require("./components/SocketEmitter");
 const createWebSocket = require("./components/WebSocketServer");
 const parseMethods = require("./components/parseMethods");
 const shortId = require("shortid");
-const randomPort = () => parseInt(Math.random() * parseInt(Math.random() * 10000)) + 1023;
+const randomPort = () => Math.floor(Math.random() * (65535 - 49152 + 1)) + 49152;
 const createSSLServer = (app, options) => {
   const https = require("https");
   return https.createServer(options, app);
@@ -135,7 +135,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
         }
       });
   };
-  ServerManager.addRouteHandler = (...args) => {
+  ServerManager.addMiddleware = (...args) => {
     const name = typeof args[0] === "string" ? args.shift() : "$all";
     args.forEach(async (middleware) => {
       if (Array.isArray(middleware)) {
