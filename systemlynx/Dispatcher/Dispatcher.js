@@ -1,4 +1,5 @@
-"use strict";
+const throttle = require("../../utils/throttle");
+
 module.exports = function createDispatcher(events = {}, systemContext) {
   const Dispatcher = this || {};
 
@@ -10,12 +11,13 @@ module.exports = function createDispatcher(events = {}, systemContext) {
     return Dispatcher;
   };
 
-  Dispatcher.on = (eventName, callback) => {
+  Dispatcher.on = (eventName, callback, { limit, interval } = {}) => {
     if (typeof callback !== "function") return Dispatcher;
-
+    const name = callback.name;
+    if (typeof interval === "number") callback = throttle(callback, limit, interval);
     if (!events[eventName]) events[eventName] = [];
 
-    if (callback.name) {
+    if (name) {
       //if the function has a name and it already present don't add it
       const i = events[eventName].findIndex((fn) => fn.name === callback.name);
       if (i === -1) events[eventName].push(callback);

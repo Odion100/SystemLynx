@@ -146,6 +146,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     });
 
     function addMiddleware(middleware) {
+      if (Array.isArray(middleware)) return middleware.map(addMiddleware);
       if (!serverConfigurations.validators[name])
         serverConfigurations.validators[name] = [];
       serverConfigurations.validators[name].push(async function (req, res, next) {

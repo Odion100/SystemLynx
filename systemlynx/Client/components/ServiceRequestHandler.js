@@ -63,9 +63,11 @@ module.exports = function ServiceRequestHandler(
     };
 
     const ErrorHandler = (err, errCount, cb) => {
-      if (!err.isAxiosError) {
-        throw err;
-      } else if (err.response.data.SystemLynxService) {
+      if (!err.isAxiosError) throw err;
+      if (!err.response) throw err;
+      if (!err.response.data) throw err;
+
+      if (err.response.data.SystemLynxService) {
         cb(err.response.data);
       } else if (errCount <= 3) {
         errCount++;

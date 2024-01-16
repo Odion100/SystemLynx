@@ -11,7 +11,7 @@ SocketServer.listen(port);
 
 describe("SocketDispatcher", () => {
   const eventName = "test-event";
-  const dispatcher = SocketDispatcher(`http://localhost:${port}/${namespace}`);
+  const dispatcher = new SocketDispatcher(`http://localhost:${port}/${namespace}`);
   it("should return an EventDispatcher object with methods on and emit", async () => {
     expect(dispatcher)
       .to.be.an("object")

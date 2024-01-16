@@ -11,6 +11,7 @@ module.exports = function createRouter(server, config) {
         req.module_name = module_name;
         req.fn = fn;
         req.Module = Module;
+        req.module = Module;
         next();
       },
       setHelpers,
@@ -26,6 +27,7 @@ module.exports = function createRouter(server, config) {
         req.module_name = module_name;
         req.fn = method;
         req.Module = Module;
+        req.module = Module;
         next();
       },
       setHelpers,

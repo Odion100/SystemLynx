@@ -2,7 +2,7 @@ const { expect } = require("chai");
 const Dispatcher = require("./Dispatcher");
 
 describe("createDispatcher", () => {
-  const dispatcher = Dispatcher();
+  const dispatcher = new Dispatcher();
   it("should return an EventDispatcher object with methods on and emit", async () => {
     expect(dispatcher)
       .to.be.an("object")

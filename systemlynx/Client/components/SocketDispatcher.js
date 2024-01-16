@@ -7,7 +7,7 @@ module.exports = function SocketDispatcher(namespace, events = {}, systemContext
     (this || {}).on && (this || {}).emit
       ? this
       : createDispatcher.apply(this, [events, systemContext]);
-  const socket = io.connect(namespace);
+  const socket = io.connect(namespace, { reconnection: false });
   socket.on("dispatch", (event) => dispatcher.emit(event.name, event.data, event));
   socket.on("disconnect", () => {
     socket.disconnect();

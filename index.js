@@ -15,7 +15,7 @@ const LoadBalancer = isNode ? createLoadBalancer() : null;
 const App = createApp();
 const HttpClient = createHttpClient();
 const Client = createClient();
-const Dispatcher = createDispatcher();
+const Dispatcher = new createDispatcher();
 
 module.exports = {
   //Export these pre-created objects for convenient object destructuring
