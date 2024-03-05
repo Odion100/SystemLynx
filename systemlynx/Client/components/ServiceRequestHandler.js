@@ -1,7 +1,7 @@
 "use strict";
 
 const { isNode } = require("../../../utils/ProcessChecker");
-const { convertToReadStream } = require("../components/convertToReadStream");
+const { convertToReadStream } = require("./convertToReadStream");
 const isObject = (value) =>
   typeof value === "object" ? (!value ? false : !Array.isArray(value)) : false;
 const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
@@ -63,12 +63,8 @@ module.exports = function ServiceRequestHandler(
     };
 
     const ErrorHandler = (err, errCount, cb) => {
-      if (!err.isAxiosError) throw err;
-      if (!err.response) throw err;
-      if (!err.response.data) throw err;
-
-      if (err.response.data.SystemLynxService) {
-        cb(err.response.data);
+      if (err.SystemLynxService) {
+        cb(err);
       } else if (errCount <= 3) {
         errCount++;
         if (reconnectModule) reconnectModule(() => tryRequest(cb, errCount));

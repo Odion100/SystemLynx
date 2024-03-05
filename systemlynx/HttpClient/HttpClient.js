@@ -7,10 +7,17 @@ module.exports = function createHttpClient() {
   const Client = {};
   Client.request = async ({ method = "get", url, body: data, headers }) => {
     method = method.toLowerCase();
-    const res = await axios({ url, method, headers, data });
-    if (res.status >= 400) {
-      throw res.data;
-    } else return res.data;
+    try {
+      const res = await axios({ url, method, headers, data });
+      if (res.status >= 400) {
+        throw res.data;
+      } else return res.data;
+    } catch (error) {
+      if (!error.isAxiosError) throw error;
+      if (!error.response) throw error;
+      if (!error.response.data) throw error;
+      throw error.response.data;
+    }
   };
 
   Client.upload = async ({ url, formData, headers }) => {
@@ -24,12 +31,19 @@ module.exports = function createHttpClient() {
     }
     if (__arguments) form.append("__arguments", JSON.stringify(__arguments));
 
-    const res = await axios.post(url, form, {
-      headers: { ...headers, "Content-Type": "multipart/form-data" },
-    });
-    if (res.status >= 400) {
-      throw res.data;
-    } else return res.data;
+    try {
+      const res = await axios.post(url, form, {
+        headers: { ...headers, "Content-Type": "multipart/form-data" },
+      });
+      if (res.status >= 400) {
+        throw res.data;
+      } else return res.data;
+    } catch (error) {
+      if (!error.isAxiosError) throw error;
+      if (!error.response) throw error;
+      if (!error.response.data) throw error;
+      throw error.response.data;
+    }
   };
 
   return Client;
