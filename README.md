@@ -2,14 +2,14 @@
 
 SystemLynx is a NodeJS framework for building modular web APIs, built on top of ExpressJS and Socket.io. It allows you to create objects and load them from a server into a client application.
 
-SystemLynx comes with the following objects that are used for web app development:
+SystemLynx comes with the following class that are used for web app development:
 
 ```javascript
 const { App, Service, Client, LoadBalancer } = require("systemlynx");
 ```
 
 - **Service** - Used to create and host objects that can be loaded and used by a SystemLynx Client.
-- **Client** - Used in a client application to load a **Service**, providing access to all the objects hosted by the **Service**.
+- **Client** - Used in a client application to load a **Service**, providing access to all the classes hosted by the **Service**.
 - **App** - provides a modular interface for creating and loading Services.
 
 Find the full [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/API.md#tasksjs-api-documentation) here.
@@ -20,7 +20,7 @@ Find the full [API Documentation](https://github.com/Odion100/SystemLynx/blob/ma
 
 ## Service.module(name, constructor [,options])
 
-Use the `Service.module(name, constructor/object)` method to add an object to be hosted by a **SystemLynx Service**. This will allows you to load an instance of that object into a client application, and call any methods on that object remotely.
+Use the `Service.module(name, constructor/class)` method to add an class to be hosted by a **SystemLynx Service**. This will allows you to load an instance of that class into a client application, and call any methods on that class remotely.
 
 ```javascript
 const { Service } = require("systemlynx");
@@ -35,9 +35,9 @@ Users.add = function (data) {
 Service.module("Users", Users);
 ```
 
-In the code above we assigned an object to the variable `Users` and gave it an add method. The `Service.module(name, constructor/object)` function takes the name assigned to the object as the first argument and the object itself as the second argument.
+In the code above we assigned an class to the variable `Users` and gave it an add method. The `Service.module(name, constructor/class` function takes the name assigned to the class as the first argument and the class itself as the second argument.
 
-Alternatively, you can use a constructor function instead of an object as the second argument. In the example below we create another **Module** called "Orders". This time we use a constructor function as the second argument of the to **Service.module** function. The `this` value is the initial instance of the **Module** object. Every method added to the `this` value will be accessible when the object is loaded by a **SystemLynx Client**. Note: **Module** methods can be synchronous or asynchronous functions.
+Alternatively, you can use a constructor function instead of an class as the second argument. In the example below we create another **Module** called "Orders". This time we use a constructor function as the second argument of the to **Service.module** function. The `this` value is the initial instance of the **Module** class. Every method added to the `this` value will be accessible when the class is loaded by a **SystemLynx Client**. Note: **Module** methods can be synchronous or asynchronous functions.
 
 ```javascript
 const { Service } = require("systemlynx");
@@ -93,7 +93,7 @@ Now lets see how these objects can be loaded into a client application.
 
 ## Client.loadService(url, [options])
 
-The `Client.loadService(url)` function can be used to load a SystemLynx **Service**. This method requires the url (string) of the **Service** you want to load as the first argument, and will return a promise that will resolve into an object that containing all the modules hosted by that service. See below. **NOTE: You must be within an async function in order to use the `await` keyword when returning a promise.**
+The `Client.loadService(url)` function can be used to load a SystemLynx **Service**. This method requires the url (string) of the **Service** you want to load as the first argument, and will return a promise that will resolve into an class that containing all the modules hosted by that service. See below. **NOTE: You must be within an async function in order to use the `await` keyword when returning a promise.**
 
 ```javascript
 const { Client } = require("systemlynx");
@@ -103,7 +103,7 @@ const { Users, Orders } = await Client.loadService("http://localhost:4400/test/s
 console.log(Users, Orders);
 ```
 
-Now that we've loaded the **Service** that we created in the previous example, and have a handle on the **Users** and **Orders** objects hosted by the **Service**, we can now call any method on those objects in the same way we would remotely. In the example below, noticed that both the `User.add` and `Orders.find` methods will return a promise.
+Now that we've loaded the **Service** that we created in the previous example, and have a handle on the **Users** and **Orders** class hosted by the **Service**, we can now call any method on those classes in the same way we would remotely. In the example below, noticed that both the `User.add` and `Orders.find` methods will return a promise.
 
 ```javascript
 const { Client } = require("systemlynx");
@@ -123,7 +123,7 @@ console.log(response);
 
 ## Sending and Receiving Websocket Events
 
-We can also receive WebSocket events emitted from the remote objects we've loaded using the `Client.loadService(url)` function. In the example below we're using the `Users.on(event_name, callback)` method to listen for events coming from the "Users" **Module**.
+We can also receive WebSocket events emitted from the remote classes we've loaded using the `Client.loadService(url)` function. In the example below we're using the `Users.on(event_name, callback)` method to listen for events coming from the "Users" **Module**.
 
 ```javascript
 const { Client } = require("systemlynx");
