@@ -22,7 +22,8 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     useService: true,
     staticRouting: false,
     ssl: { key: "", cert: "" },
-    validators: { $all: [] },
+    beforeware: { $all: [] },
+    afterware: { $all: [] },
   };
   const server = createServer(customServer);
   const router = createRouter(server, () => serverConfigurations);
@@ -97,16 +98,26 @@ module.exports = function createServerManager(customServer, customWebSocketServe
       useService,
       useREST,
       socketPort,
-      validators,
+      beforeware,
+      afterware,
     } = serverConfigurations;
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
-    const exclude_methods = ["on", "emit", "before", "$clearEvent", ...reserved_methods];
+    const exclude_methods = [
+      "on",
+      "emit",
+      "before",
+      "after",
+      "$clearEvent",
+      ...reserved_methods,
+    ];
     const methods = parseMethods(Module, exclude_methods, useREST);
     const namespace = staticRouting ? name : shortId();
 
     SocketEmitter.apply(Module, [namespace, WebSocket]);
-    const _validators = [...validators.$all, ...(validators[name] || [])];
+    const before_validators = [...beforeware.$all, ...(beforeware[name] || [])];
+    const after_validators = [...afterware.$all, ...(afterware[name] || [])];
+
     if (useService) {
       const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
 
@@ -118,46 +129,66 @@ module.exports = function createServerManager(customServer, customWebSocketServe
       });
       methods.forEach((method) => {
         const nsp = `${name}.${method.fn}`;
-        const customValidators = [..._validators, ...(validators[nsp] || [])];
-        router.addService(Module, path, method, name, customValidators);
+        const beforeValidators = [...before_validators, ...(beforeware[nsp] || [])];
+        const afterValidators = [...after_validators, ...(afterware[nsp] || [])];
+        router.addService(Module, path, method, name, beforeValidators, afterValidators);
       });
     }
     if (useREST)
       methods.forEach((method) => {
         const nsp = `${name}.${method.fn}`;
-        const customValidators = [..._validators, ...(validators[nsp] || [])];
+        const beforeValidators = [...before_validators, ...(beforeware[nsp] || [])];
+        const afterValidators = [...after_validators, ...(afterware[nsp] || [])];
         switch (method.fn) {
           case "get":
           case "put":
           case "post":
           case "delete":
-            router.addREST(Module, `${route}/${name}`, method, name, customValidators);
+            router.addREST(
+              Module,
+              `${route}/${name}`,
+              method,
+              name,
+              beforeValidators,
+              afterValidators
+            );
         }
       });
   };
-  ServerManager.addMiddleware = (...args) => {
+
+  // Shared function for adding middleware (both beforeware and afterware)
+  const addMiddleware = (type, ...args) => {
     const name = typeof args[0] === "string" ? args.shift() : "$all";
     args.forEach(async (middleware) => {
       if (Array.isArray(middleware)) {
-        middleware.map(addMiddleware);
+        middleware.map((m) => addMiddlewareItem(type, name, m));
       } else {
-        addMiddleware(middleware);
+        addMiddlewareItem(type, name, middleware);
       }
     });
-
-    function addMiddleware(middleware) {
-      if (Array.isArray(middleware)) return middleware.map(addMiddleware);
-      if (!serverConfigurations.validators[name])
-        serverConfigurations.validators[name] = [];
-      serverConfigurations.validators[name].push(async function (req, res, next) {
-        try {
-          await middleware(req, res, next);
-        } catch (error) {
-          res.sendError(error);
-        }
-      });
-    }
   };
+
+  // Helper function to add a single middleware item
+  const addMiddlewareItem = (type, name, middleware) => {
+    if (Array.isArray(middleware))
+      return middleware.map((m) => addMiddlewareItem(type, name, m));
+
+    if (!serverConfigurations[type][name]) {
+      serverConfigurations[type][name] = [];
+    }
+
+    serverConfigurations[type][name].push(async function (req, res, next) {
+      try {
+        await middleware(req, res, next);
+      } catch (error) {
+        res.sendError(error);
+      }
+    });
+  };
+
+  // Use the shared function for both middleware types
+  ServerManager.addBeforware = (...args) => addMiddleware("beforeware", ...args);
+  ServerManager.addAfterware = (...args) => addMiddleware("afterware", ...args);
   return ServerManager;
 };
 

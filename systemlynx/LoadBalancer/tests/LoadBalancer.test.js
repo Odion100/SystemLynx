@@ -15,11 +15,13 @@ describe("LoadBalancer()", () => {
         "WebSocket",
         "module",
         "clones",
-        "before"
+        "before",
+        "after"
       )
       .that.respondsTo("startService")
       .that.respondsTo("module")
-      .that.respondsTo("before");
+      .that.respondsTo("before")
+      .that.respondsTo("after");
     expect(LoadBalancer.clones)
       .to.be.an("object")
       .that.has.all.keys(
@@ -27,6 +29,7 @@ describe("LoadBalancer()", () => {
         "emit",
         "$clearEvent",
         "before",
+        "after",
         "clones",
         "register",
         "dispatch",
@@ -36,6 +39,7 @@ describe("LoadBalancer()", () => {
       .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("before")
+      .that.respondsTo("after")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")
       .that.respondsTo("assignDispatch")
@@ -92,6 +96,7 @@ describe("LoadBalancer.clones (Module)", () => {
         "$emit",
         "$clearEvent",
         "before",
+        "after",
         "register",
         "dispatch",
         "assignDispatch",
@@ -101,6 +106,7 @@ describe("LoadBalancer.clones (Module)", () => {
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
       .that.respondsTo("before")
+      .that.respondsTo("after")
       .that.respondsTo("$emit")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")

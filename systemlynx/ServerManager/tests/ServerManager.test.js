@@ -11,13 +11,15 @@ describe("createServerManager function", () => {
       .that.has.all.keys([
         "startService",
         "addModule",
-        "addMiddleware",
+        "addBeforware",
+        "addAfterware",
         "server",
         "WebSocket",
       ])
       .that.respondsTo("startService")
       .that.respondsTo("addModule")
-      .that.respondsTo("addMiddleware");
+      .that.respondsTo("addBeforware")
+      .that.respondsTo("addAfterware");
   });
 });
 describe("ServerManager", () => {
@@ -200,7 +202,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
     });
   });
 
-  it("should be able to use the ServerManager.addMiddleware method to add additional route handling", async () => {
+  it("should be able to use the ServerManager.addBeforware method to add additional route handling", async () => {
     const ServerManager = createServerManager();
     const route = "/testAPI";
     const port = 5454;
@@ -228,15 +230,15 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       },
     };
 
-    ServerManager.addMiddleware((req, res, next) => {
+    ServerManager.addBeforware((req, res, next) => {
       req.$allHandlerAdded = true;
       next();
     });
-    ServerManager.addMiddleware(`${name}.put`, (req, res, next) => {
+    ServerManager.addBeforware(`${name}.put`, (req, res, next) => {
       req.putHandlerAdded = true;
       next();
     });
-    ServerManager.addMiddleware(`${name}.test`, (req, res, next) => {
+    ServerManager.addBeforware(`${name}.test`, (req, res, next) => {
       res.sendError({ status: 400, message: "tested passed" });
     });
     ServerManager.addModule(name, object);
@@ -301,6 +303,113 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       fn: "test",
       module_name: "testObject",
       serviceUrl: "http://localhost:5454/testAPI",
+      status: 400,
+      SystemLynxService: true,
+    });
+  });
+  it("should be able to use the ServerManager.addAfterware method to add additional route handling after the method call", async () => {
+    const ServerManager = createServerManager();
+    const route = "/testAPI";
+    const port = 5455;
+    const url = `http://localhost:${port}${route}`;
+    const name = "testObject";
+    const object = {
+      get: function () {
+        const { req } = this;
+        return {
+          SERVICE_TEST_PASSED: false,
+          $allHandlerAdded: false,
+          putHandlerAdded: false,
+        };
+      },
+      put: function () {
+        const { req } = this;
+        return {
+          SERVICE_TEST_PASSED: false,
+          $allHandlerAdded: false,
+          putHandlerAdded: false,
+        };
+      },
+      test: function () {
+        return { SERVICE_TEST_PASSED: false };
+      },
+    };
+
+    ServerManager.addAfterware((req, res, next) => {
+      req.returnValue.$allHandlerAdded = true;
+      req.returnValue.SERVICE_TEST_PASSED = true;
+      next();
+    });
+    ServerManager.addAfterware(`${name}.put`, (req, res, next) => {
+      req.returnValue.putHandlerAdded = true;
+      next();
+    });
+    ServerManager.addAfterware(`${name}.test`, (req, res, next) => {
+      res.sendError({ status: 400, message: "tested passed" });
+    });
+    ServerManager.addModule(name, object);
+    await ServerManager.startService({
+      route,
+      port,
+      staticRouting: true,
+      useREST: true,
+    });
+
+    const results = await new Promise((resolve) => {
+      request({ url: `${url}/${name}/get`, json: true }, (err, res, body) => {
+        resolve(body);
+      });
+    });
+
+    expect(results).to.deep.equal({
+      returnValue: {
+        SERVICE_TEST_PASSED: true,
+        $allHandlerAdded: true,
+        putHandlerAdded: false,
+      },
+      fn: "get",
+      message: "[SystemLynx][response]: testObject.get(...) returned successfully",
+      module_name: "testObject",
+      serviceUrl: "http://localhost:5455/testAPI",
+      status: 200,
+    });
+
+    const result2 = await new Promise((resolve) => {
+      request(
+        { url: `${url}/${name}/put`, json: true, method: "PUT" },
+        (err, res, body) => {
+          resolve(body);
+        }
+      );
+    });
+
+    expect(result2).to.deep.equal({
+      returnValue: {
+        SERVICE_TEST_PASSED: true,
+        $allHandlerAdded: true,
+        putHandlerAdded: true,
+      },
+      fn: "put",
+      message: "[SystemLynx][response]: testObject.put(...) returned successfully",
+      module_name: "testObject",
+      serviceUrl: "http://localhost:5455/testAPI",
+      status: 200,
+    });
+
+    const result3 = await new Promise((resolve) => {
+      request(
+        { url: `${url}/${name}/test`, json: true, method: "post" },
+        (err, res, body) => {
+          resolve(body);
+        }
+      );
+    });
+
+    expect(result3).to.deep.equal({
+      message: "tested passed",
+      fn: "test",
+      module_name: "testObject",
+      serviceUrl: "http://localhost:5455/testAPI",
       status: 400,
       SystemLynxService: true,
     });

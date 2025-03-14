@@ -14,6 +14,7 @@ describe("createApp()", () => {
         "on",
         "emit",
         "before",
+        "after",
         "$clearEvent",
         "use",
         "startService",
@@ -28,6 +29,7 @@ describe("createApp()", () => {
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
       .that.respondsTo("before")
+      .that.respondsTo("after")
       .that.respondsTo("use")
       .that.respondsTo("startService")
       .that.respondsTo("loadService")
@@ -236,7 +238,8 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "on",
             "emit",
             "$clearEvent",
-            "before"
+            "before",
+            "after"
           )
           .that.respondsTo("useModule")
           .that.respondsTo("useService")
@@ -244,7 +247,8 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
           .that.respondsTo("on")
           .that.respondsTo("emit")
           .that.respondsTo("$clearEvent")
-          .that.respondsTo("before");
+          .that.respondsTo("before")
+          .that.respondsTo("after");
       }).module("test2", function () {
         expect(this)
           .to.be.an("object")
@@ -255,7 +259,8 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "on",
             "emit",
             "$clearEvent",
-            "before"
+            "before",
+            "after"
           )
           .that.respondsTo("useModule")
           .that.respondsTo("useService")
@@ -263,7 +268,8 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
           .that.respondsTo("on")
           .that.respondsTo("emit")
           .that.respondsTo("$clearEvent")
-          .that.respondsTo("before");
+          .that.respondsTo("before")
+          .that.respondsTo("after");
         resolve();
       })
     );

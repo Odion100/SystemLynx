@@ -37,6 +37,7 @@ describe("SystemLynx Objects", () => {
         "emit",
         "$clearEvent",
         "before",
+        "after",
         "use",
         "startService",
         "loadService",
@@ -50,6 +51,7 @@ describe("SystemLynx Objects", () => {
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
       .that.respondsTo("before")
+      .that.respondsTo("after")
       .that.respondsTo("use")
       .that.respondsTo("startService")
       .that.respondsTo("loadService")
@@ -81,15 +83,18 @@ describe("SystemLynx Objects", () => {
         "WebSocket",
         "clones",
         "module",
-        "before"
+        "before",
+        "after"
       )
       .that.respondsTo("startService")
       .that.respondsTo("module")
-      .that.respondsTo("before");
+      .that.respondsTo("before")
+      .that.respondsTo("after");
     expect(LoadBalancer.clones)
       .to.be.an("object")
       .that.has.all.keys(
         "before",
+        "after",
         "on",
         "emit",
         "$clearEvent",
@@ -102,6 +107,7 @@ describe("SystemLynx Objects", () => {
       .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("before")
+      .that.respondsTo("after")
       .that.respondsTo("register")
       .that.respondsTo("dispatch")
       .that.respondsTo("assignDispatch")
@@ -115,13 +121,14 @@ describe("SystemLynx Objects", () => {
       .that.has.all.keys([
         "startService",
         "addModule",
-        "addMiddleware",
+        "addBeforware",
+        "addAfterware",
         "server",
         "WebSocket",
       ])
       .that.respondsTo("startService")
       .that.respondsTo("addModule")
-      .that.respondsTo("addMiddleware");
+      .that.respondsTo("addBeforware");
   });
 
   it("should return a new instance of a Service", () => {

@@ -8,8 +8,14 @@ module.exports = function createService(
   systemContext = {}
 ) {
   const ServerManager = createServerManager(customServer, customWebSocketServer);
-  const { startService, addMiddleware, server, WebSocket } = ServerManager;
-  const Service = { startService, server, WebSocket, before: addMiddleware };
+  const { startService, addBeforware, addAfterware, server, WebSocket } = ServerManager;
+  const Service = {
+    startService,
+    server,
+    WebSocket,
+    before: addBeforware,
+    after: addAfterware,
+  };
 
   Service.module = function (name, constructor, reserved_methods = []) {
     const exclude_methods = reserved_methods.concat(
@@ -19,9 +25,18 @@ module.exports = function createService(
       if (typeof args[0] === "string") {
         const arg1 = args.shift();
         const fn = arg1 === "$all" ? "" : `.${arg1}`;
-        addMiddleware(`${name}${fn}`, ...args);
+        addBeforware(`${name}${fn}`, ...args);
       } else {
-        addMiddleware(`${name}`, ...args);
+        addBeforware(`${name}`, ...args);
+      }
+    };
+    const after = (...args) => {
+      if (typeof args[0] === "string") {
+        const arg1 = args.shift();
+        const fn = arg1 === "$all" ? "" : `.${arg1}`;
+        addAfterware(`${name}${fn}`, ...args);
+      } else {
+        addAfterware(`${name}`, ...args);
       }
     };
     if (typeof constructor === "object" && constructor instanceof Object) {
@@ -33,6 +48,7 @@ module.exports = function createService(
           }, {}),
           ...systemContext,
           before,
+          after,
         },
         [undefined, systemContext]
       );
@@ -44,7 +60,7 @@ module.exports = function createService(
       if (constructor.constructor.name === "AsyncFunction")
         throw `[SystemLynx][Service][Error]: Module(name, constructor) function cannot receive an async function as the constructor`;
 
-      const Module = createDispatcher.apply({ ...systemContext, before }, [
+      const Module = createDispatcher.apply({ ...systemContext, before, after }, [
         undefined,
         systemContext,
       ]);

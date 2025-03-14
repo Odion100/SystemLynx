@@ -7,10 +7,18 @@ describe("createService", () => {
     const Service = createService();
     expect(Service)
       .to.be.an("object")
-      .that.has.all.keys("startService", "module", "server", "WebSocket", "before")
+      .that.has.all.keys(
+        "startService",
+        "module",
+        "server",
+        "WebSocket",
+        "before",
+        "after"
+      )
       .that.respondsTo("startService")
       .that.respondsTo("module")
-      .that.respondsTo("before");
+      .that.respondsTo("before")
+      .that.respondsTo("after");
   });
 });
 
@@ -61,11 +69,12 @@ describe("Service.module(constructor)", () => {
 
     expect(mod)
       .to.be.an("Object")
-      .that.has.all.keys("on", "emit", "$clearEvent", "before", "test", "test2")
+      .that.has.all.keys("on", "emit", "$clearEvent", "before", "after", "test", "test2")
       .that.respondsTo("on")
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
       .that.respondsTo("before")
+      .that.respondsTo("after")
       .that.respondsTo("test")
       .that.respondsTo("test2");
   });
@@ -144,6 +153,10 @@ describe("Service.module(object)", () => {
         req.beforeAction3 = true;
         next();
       });
+      this.after("action3", (req, res, next) => {
+        req.returnValue.afterAction3 = true;
+        next();
+      });
     });
     mod.before(
       "action1",
@@ -156,9 +169,24 @@ describe("Service.module(object)", () => {
         next();
       }
     );
+    mod.after(
+      "action1",
+      (req, res, next) => {
+        req.returnValue.afterAction1 = true;
+        next();
+      },
+      (req, res, next) => {
+        req.returnValue.afterAction12 = true;
+        next();
+      }
+    );
 
     mod.before((req, res, next) => {
       req.beforeModule = true;
+      next();
+    });
+    mod.after((req, res, next) => {
+      req.returnValue.afterModule = true;
       next();
     });
 
@@ -166,15 +194,29 @@ describe("Service.module(object)", () => {
       req.beforeService = true;
       next();
     });
+    Service.after((req, res, next) => {
+      req.returnValue.afterService = true;
+      next();
+    });
+
     expect(mod)
       .to.be.an("Object")
-      .that.has.all.keys("action1", "action2", "on", "emit", "$clearEvent", "before")
+      .that.has.all.keys(
+        "action1",
+        "action2",
+        "on",
+        "emit",
+        "$clearEvent",
+        "before",
+        "after"
+      )
       .that.respondsTo("action1")
       .that.respondsTo("action2")
       .that.respondsTo("on")
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
-      .that.respondsTo("before");
+      .that.respondsTo("before")
+      .that.respondsTo("after");
   });
   it("should 'Serve' Service connection data created using an object as the constructor", async () => {
     await Service.startService({ route, port });
@@ -217,19 +259,35 @@ describe("Service.module(object)", () => {
     expect(results.port, port);
   });
 
-  it("should use SeverModule.before method to add a route handler before a target method", async () => {
+  it("should use SeverModule.before method and SeverModule.after method to add a route handler before and after target method ", async () => {
     const Client = createClient();
     const { mod, mod2 } = await Client.loadService(url);
     const result = await mod.action1();
+
     expect(result).to.deep.equal({
       beforeAction1: true,
       beforeAction12: true,
       beforeModule: true,
       beforeService: true,
+
+      afterAction1: true,
+      afterAction12: true,
+      afterModule: true,
+      afterService: true,
     });
     const result2 = await mod.action2();
-    expect(result2).to.deep.equal({ beforeModule: true, beforeService: true });
+    expect(result2).to.deep.equal({
+      beforeModule: true,
+      beforeService: true,
+      afterModule: true,
+      afterService: true,
+    });
     const result3 = await mod2.action3();
-    expect(result3).to.deep.equal({ beforeAction3: true, beforeService: true });
+    expect(result3).to.deep.equal({
+      beforeAction3: true,
+      beforeService: true,
+      afterAction3: true,
+      afterService: true,
+    });
   });
 });

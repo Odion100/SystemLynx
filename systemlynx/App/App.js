@@ -48,6 +48,11 @@ module.exports = function createApp(server, WebSocket, customClient) {
     return App;
   };
 
+  App.after = (...args) => {
+    system.Service.after(...args);
+    return App;
+  };
+
   App.loadService = (name, url) => {
     system.services.push({ name, url, onLoad: null, client: {} });
     return App;
