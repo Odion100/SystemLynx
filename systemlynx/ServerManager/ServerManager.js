@@ -66,7 +66,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
       route: `/${route}`,
       port,
       serviceUrl,
-      namespace: `http://${host}:${socketPort}/${namespace}`,
+      namespace: `ws://${host}:${socketPort}/${namespace}`,
       SystemLynxService: true,
     };
 
@@ -122,7 +122,7 @@ module.exports = function createServerManager(customServer, customWebSocketServe
       const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
 
       modules.push({
-        namespace: `http://${host}:${socketPort}/${namespace}`,
+        namespace: `ws://${host}:${socketPort}/${namespace}`,
         route: `/${path}`,
         name,
         methods,
