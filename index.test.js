@@ -124,7 +124,6 @@ describe("SystemLynx Objects", () => {
         "addBeforware",
         "addAfterware",
         "server",
-        "WebSocket",
       ])
       .that.respondsTo("startService")
       .that.respondsTo("addModule")

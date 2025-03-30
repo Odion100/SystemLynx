@@ -14,7 +14,6 @@ describe("createServerManager function", () => {
         "addBeforware",
         "addAfterware",
         "server",
-        "WebSocket",
       ])
       .that.respondsTo("startService")
       .that.respondsTo("addModule")
@@ -89,7 +88,7 @@ describe("ServerManager", () => {
   it("should be able call ServerManager.addModule method before or after calling ServerManager.startService", async () => {
     const ServerManager = createServerManager();
     const route = "/testService";
-    const port = 4500;
+    const port = 4600;
     const url = `http://localhost:${port}${route}`;
     const name = "TestModule";
 

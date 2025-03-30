@@ -26,7 +26,7 @@ describe("Service factory", () => {
   it("should be able to use Service.startService to initiate a ServerManager instance that hosts the Service Connection Data", async () => {
     const Service = createService();
     const route = "/testService";
-    const port = 5500;
+    const port = 5600;
     const url = `http://localhost:${port}${route}`;
 
     await Service.startService({ route, port });
@@ -109,9 +109,7 @@ describe("Service.module(constructor)", () => {
     ]);
     expect(results.modules[0].name, "mod");
     expect(results.modules[0].route).to.be.a("String");
-    expect(results.modules[0].namespace).to.match(
-      new RegExp("https?://localhost:\\d+/.+")
-    );
+    expect(results.modules[0].namespace).to.match(new RegExp("wss?://localhost:\\d+/.+"));
     expect(results.SystemLynxServerService, {
       serviceUrl: "localhost:6542/test/service",
     });
@@ -249,9 +247,7 @@ describe("Service.module(object)", () => {
     ]);
     expect(results.modules[0].name, "mod");
     expect(results.modules[0].route).to.be.a("String");
-    expect(results.modules[0].namespace).to.match(
-      new RegExp("https?://localhost:\\d+/.+")
-    );
+    expect(results.modules[0].namespace).to.match(new RegExp("wss?://localhost:\\d+/.+"));
     expect(results.SystemLynxServerService, {
       serviceUrl: "localhost:6542/test/service",
     });

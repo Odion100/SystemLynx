@@ -2,22 +2,21 @@
 const createServer = require("./components/Server");
 const createRouter = require("./components/Router");
 const SocketEmitter = require("./components/SocketEmitter");
-const createWebSocket = require("./components/WebSocketServer");
 const parseMethods = require("./components/parseMethods");
 const shortId = require("shortid");
-const randomPort = () => Math.floor(Math.random() * (65535 - 49152 + 1)) + 49152;
-const createSSLServer = (app, options) => {
-  const https = require("https");
-  return https.createServer(options, app);
-};
+const http = require("http");
+const https = require("https");
+const socketIO = require("socket.io");
 
-module.exports = function createServerManager(customServer, customWebSocketServer) {
+module.exports = function createServerManager(customServer) {
   let serverConfigurations = {
+    server: null,
+    WebSocket: null,
     route: null,
     port: null,
     host: "localhost",
     serviceUrl: null,
-    socketPort: null,
+    port: null,
     useREST: false,
     useService: true,
     staticRouting: false,
@@ -25,60 +24,58 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     beforeware: { $all: [] },
     afterware: { $all: [] },
   };
+
   const server = createServer(customServer);
   const router = createRouter(server, () => serverConfigurations);
-  const { SocketServer, WebSocket } = createWebSocket(customWebSocketServer);
   const moduleQueue = [];
   const modules = [];
 
-  const ServerManager = { server, WebSocket };
+  const ServerManager = { server };
 
   ServerManager.startService = (options) => {
-    let {
-      route,
-      host = "localhost",
-      port,
-      socketPort = randomPort(),
-      staticRouting,
-      ssl,
-    } = options;
-
-    const namespace = staticRouting ? route : shortId();
-    SocketServer.listen(socketPort);
-    SocketEmitter.apply(ServerManager, [namespace, WebSocket]);
+    let { route, host = "localhost", port, staticRouting, ssl } = options;
 
     route = route.charAt(0) === "/" ? route.substr(1) : route;
-    route =
-      route.charAt(route.length - 1) === "/" ? route.substr(route.length - 1) : route;
+    route = route.charAt(route.length - 1) === "/" ? route.slice(0, -1) : route;
+
+    const namespace = staticRouting ? route : shortId();
+
     const protocol = ssl ? "https" : "http";
     const serviceUrl = `${protocol}://${host}:${port}/${route}`;
 
-    serverConfigurations = {
-      ...serverConfigurations,
+    const httpServer = ssl ? https.createServer(ssl, server) : http.createServer(server);
+
+    const WebSocket = socketIO(httpServer);
+
+    SocketEmitter.apply(ServerManager, [namespace, WebSocket]);
+
+    Object.assign(serverConfigurations, {
       ...options,
+      server: httpServer,
+      WebSocket,
       serviceUrl,
       route,
-      socketPort,
-    };
+      port,
+      ssl,
+    });
+    const wsProtocol = ssl ? "wss" : "ws";
+
     const connectionData = {
       modules,
       host,
       route: `/${route}`,
       port,
       serviceUrl,
-      namespace: `ws://${host}:${socketPort}/${namespace}`,
+      namespace: `${wsProtocol}://${host}:${port}/${namespace}`,
       SystemLynxService: true,
     };
 
     server.get(`/${route}`, (req, res) => {
-      //The route will return connection data for the service including an array of
-      //modules (objects) which contain instructions on how to make request to each object
       res.json({ ...connectionData, modules });
     });
 
     return new Promise((resolve) => {
-      const _server = ssl ? createSSLServer(server, ssl) : server;
-      _server.listen(port, () => {
+      httpServer.listen(port, () => {
         console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}\n`);
         moduleQueue.forEach(({ name, Module, reserved_methods }) =>
           ServerManager.addModule(name, Module, reserved_methods)
@@ -97,12 +94,15 @@ module.exports = function createServerManager(customServer, customWebSocketServe
       staticRouting,
       useService,
       useREST,
-      socketPort,
+      port,
       beforeware,
       afterware,
+      WebSocket,
+      ssl,
     } = serverConfigurations;
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
+
     const exclude_methods = [
       "on",
       "emit",
@@ -115,30 +115,36 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     const namespace = staticRouting ? name : shortId();
 
     SocketEmitter.apply(Module, [namespace, WebSocket]);
+
     const before_validators = [...beforeware.$all, ...(beforeware[name] || [])];
     const after_validators = [...afterware.$all, ...(afterware[name] || [])];
 
     if (useService) {
       const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
+      const wsProtocol = ssl ? "wss" : "ws";
 
       modules.push({
-        namespace: `ws://${host}:${socketPort}/${namespace}`,
+        namespace: `${wsProtocol}://${host}:${port}/${namespace}`,
         route: `/${path}`,
         name,
         methods,
       });
+
       methods.forEach((method) => {
         const nsp = `${name}.${method.fn}`;
         const beforeValidators = [...before_validators, ...(beforeware[nsp] || [])];
         const afterValidators = [...after_validators, ...(afterware[nsp] || [])];
+
         router.addService(Module, path, method, name, beforeValidators, afterValidators);
       });
     }
+
     if (useREST)
       methods.forEach((method) => {
         const nsp = `${name}.${method.fn}`;
         const beforeValidators = [...before_validators, ...(beforeware[nsp] || [])];
         const afterValidators = [...after_validators, ...(afterware[nsp] || [])];
+
         switch (method.fn) {
           case "get":
           case "put":
@@ -156,7 +162,6 @@ module.exports = function createServerManager(customServer, customWebSocketServe
       });
   };
 
-  // Shared function for adding middleware (both beforeware and afterware)
   const addMiddleware = (type, ...args) => {
     const name = typeof args[0] === "string" ? args.shift() : "$all";
     args.forEach(async (middleware) => {
@@ -168,7 +173,6 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     });
   };
 
-  // Helper function to add a single middleware item
   const addMiddlewareItem = (type, name, middleware) => {
     if (Array.isArray(middleware))
       return middleware.map((m) => addMiddlewareItem(type, name, m));
@@ -186,18 +190,8 @@ module.exports = function createServerManager(customServer, customWebSocketServe
     });
   };
 
-  // Use the shared function for both middleware types
   ServerManager.addBeforware = (...args) => addMiddleware("beforeware", ...args);
   ServerManager.addAfterware = (...args) => addMiddleware("afterware", ...args);
+
   return ServerManager;
 };
-
-//creating an ssl setup with openssl cli
-//1. `openssl genrsa -out key.pem` to generate a private key
-//2. create a certificate signing request using the key we just generated
-// `openssl req -new -key key.pem -out csr.pem`
-//3. Answer the prompts in the terminal
-//4. use the newly generate csr to generate a ssl certificate
-// openssl x509 -req -days 365 -in csr.pem -signkey key.pem -out cert.pem
-//(x509 is the standard to use for the certificate, days are the number of day the cert is valid)
-//5. csr.pem is no longer needed
