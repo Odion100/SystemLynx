@@ -23,6 +23,7 @@ module.exports = function createServerManager(customServer) {
     ssl: { key: "", cert: "" },
     beforeware: { $all: [] },
     afterware: { $all: [] },
+    protocol: "http",
   };
 
   const server = createServer(customServer);
@@ -33,14 +34,13 @@ module.exports = function createServerManager(customServer) {
   const ServerManager = { server };
 
   ServerManager.startService = (options) => {
-    let { route, host = "localhost", port, staticRouting, ssl } = options;
+    let { route, host = "localhost", port, staticRouting, ssl, protocol } = options;
 
     route = route.charAt(0) === "/" ? route.substr(1) : route;
     route = route.charAt(route.length - 1) === "/" ? route.slice(0, -1) : route;
 
     const namespace = staticRouting ? route : shortId();
-
-    const protocol = ssl ? "https" : "http";
+    if (!["http", "https"].includes(protocol)) protocol = ssl ? "https" : "http";
     const serviceUrl = `${protocol}://${host}:${port}/${route}`;
 
     const httpServer = ssl ? https.createServer(ssl, server) : http.createServer(server);
@@ -49,16 +49,7 @@ module.exports = function createServerManager(customServer) {
 
     SocketEmitter.apply(ServerManager, [namespace, WebSocket]);
 
-    Object.assign(serverConfigurations, {
-      ...options,
-      server: httpServer,
-      WebSocket,
-      serviceUrl,
-      route,
-      port,
-      ssl,
-    });
-    const wsProtocol = ssl ? "wss" : "ws";
+    const wsProtocol = protocol === "https" ? "wss" : "ws";
 
     const connectionData = {
       modules,
@@ -69,6 +60,16 @@ module.exports = function createServerManager(customServer) {
       namespace: `${wsProtocol}://${host}:${port}/${namespace}`,
       SystemLynxService: true,
     };
+
+    Object.assign(serverConfigurations, {
+      ...options,
+      server: httpServer,
+      WebSocket,
+      serviceUrl,
+      route,
+      port,
+      protocol,
+    });
 
     server.get(`/${route}`, (req, res) => {
       res.json({ ...connectionData, modules });
@@ -98,7 +99,7 @@ module.exports = function createServerManager(customServer) {
       beforeware,
       afterware,
       WebSocket,
-      ssl,
+      protocol,
     } = serverConfigurations;
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
@@ -121,7 +122,7 @@ module.exports = function createServerManager(customServer) {
 
     if (useService) {
       const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
-      const wsProtocol = ssl ? "wss" : "ws";
+      const wsProtocol = protocol === "https" ? "wss" : "ws";
 
       modules.push({
         namespace: `${wsProtocol}://${host}:${port}/${namespace}`,
