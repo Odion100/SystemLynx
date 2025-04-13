@@ -1,17 +1,21 @@
 const { expect } = require("chai");
 const SocketDispatcher = require("../components/SocketDispatcher");
-const { WebSocket, SocketServer } =
-  require("../../ServerManager/components/WebSocketServer")();
-
-const namespace = "test-namespace";
 const port = 4592;
-const socket = WebSocket.of(`/${namespace}`);
+const socketPath = "/test-namespace";
+const route = `/events`;
+const namespace = `http://localhost:${port}${route}`;
+const { WebSocket, SocketServer } =
+  require("../../ServerManager/components/WebSocketServer")(socketPath);
 
+const socket = WebSocket.of(route);
+socket.on("connect", ({ id }) => {
+  console.log(`socket connected with id:${id}`);
+});
 SocketServer.listen(port);
 
 describe("SocketDispatcher", () => {
   const eventName = "test-event";
-  const dispatcher = new SocketDispatcher(`http://localhost:${port}/${namespace}`);
+  const dispatcher = new SocketDispatcher({ namespace, socketPath });
   it("should return an EventDispatcher object with methods on and emit", async () => {
     expect(dispatcher)
       .to.be.an("object")
@@ -36,9 +40,7 @@ describe("SocketDispatcher", () => {
 
 describe("SocketDispatcher.apply()", () => {
   const eventName = "testing-event";
-  const dispatcher = SocketDispatcher.apply({}, [
-    `http://localhost:${port}/${namespace}`,
-  ]);
+  const dispatcher = SocketDispatcher.apply({}, [{ namespace, socketPath }]);
   it("should return an EventDispatcher object with methods on and emit", async () => {
     expect(dispatcher)
       .to.be.an("object")

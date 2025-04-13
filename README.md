@@ -1,3 +1,5 @@
+<img src="./logo.png" alt="Alt text" style="background:white; border-radius:20px; padding:10px"/>
+
 # SystemLynx JS ![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg) ![PRs Welcome](https://img.shields.io/badge/PRs-welcome-blue.svg) ![JS 100%](https://img.shields.io/badge/JavaScript-100%25-green)
 
 SystemLynx is a NodeJS framework for building modular web APIs, built on top of ExpressJS and Socket.io. It allows you to create objects and load them from a server into a client application.

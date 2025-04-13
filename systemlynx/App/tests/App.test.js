@@ -294,7 +294,8 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
         "modules",
         "route",
         "namespace",
-        "serviceUrl"
+        "serviceUrl",
+        "socketPath"
       )
       .that.has.property("modules")
       .that.is.an("array").that.is.empty;
@@ -329,7 +330,8 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
         "modules",
         "route",
         "namespace",
-        "serviceUrl"
+        "serviceUrl",
+        "socketPath"
       )
       .that.has.property("modules")
       .that.is.an("array");

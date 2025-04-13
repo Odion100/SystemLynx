@@ -1,6 +1,6 @@
 {
   "name": "systemlynx",
-  "version": "1.17.11",
+  "version": "1.18.12",
   "description": "",
   "main": "index.js",
   "browser": {
@@ -16,7 +16,8 @@
     "mime": "^2.4.0",
     "multer": "^1.4.2",
     "shortid": "^2.2.14",
-    "socket.io": "^2.2.0"
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1"
   },
   "repository": {
     "type": "git",

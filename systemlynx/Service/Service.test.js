@@ -45,7 +45,8 @@ describe("Service factory", () => {
         "modules",
         "route",
         "namespace",
-        "serviceUrl"
+        "serviceUrl",
+        "socketPath"
       )
       .that.has.property("modules")
       .that.is.an("array").that.is.empty;
@@ -94,7 +95,8 @@ describe("Service.module(constructor)", () => {
         "modules",
         "route",
         "namespace",
-        "serviceUrl"
+        "serviceUrl",
+        "socketPath"
       )
       .that.has.property("modules")
       .that.is.an("array");
@@ -232,7 +234,8 @@ describe("Service.module(object)", () => {
         "modules",
         "route",
         "namespace",
-        "serviceUrl"
+        "serviceUrl",
+        "socketPath"
       )
       .that.has.property("modules")
       .that.is.an("array");

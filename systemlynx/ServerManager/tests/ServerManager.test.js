@@ -40,6 +40,7 @@ describe("ServerManager", () => {
       .that.has.all.keys(
         "SystemLynxService",
         "serviceUrl",
+        "socketPath",
         "route",
         "host",
         "port",
@@ -71,6 +72,7 @@ describe("ServerManager", () => {
       .that.has.all.keys(
         "SystemLynxService",
         "serviceUrl",
+        "socketPath",
         "route",
         "host",
         "port",
@@ -108,6 +110,7 @@ describe("ServerManager", () => {
       .that.has.all.keys(
         "SystemLynxService",
         "serviceUrl",
+        "socketPath",
         "route",
         "host",
         "port",

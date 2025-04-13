@@ -3,7 +3,6 @@ const createServer = require("./components/Server");
 const createRouter = require("./components/Router");
 const SocketEmitter = require("./components/SocketEmitter");
 const parseMethods = require("./components/parseMethods");
-const shortId = require("shortid");
 const http = require("http");
 const https = require("https");
 const socketIO = require("socket.io");
@@ -19,7 +18,6 @@ module.exports = function createServerManager(customServer) {
     port: null,
     useREST: false,
     useService: true,
-    staticRouting: false,
     ssl: { key: "", cert: "" },
     beforeware: { $all: [] },
     afterware: { $all: [] },
@@ -34,20 +32,26 @@ module.exports = function createServerManager(customServer) {
   const ServerManager = { server };
 
   ServerManager.startService = (options) => {
-    let { route, host = "localhost", port, staticRouting, ssl, protocol } = options;
+    let { route, host = "localhost", port, ssl, protocol } = options;
 
     route = route.charAt(0) === "/" ? route.substr(1) : route;
     route = route.charAt(route.length - 1) === "/" ? route.slice(0, -1) : route;
 
-    const namespace = staticRouting ? route : shortId();
     if (!["http", "https"].includes(protocol)) protocol = ssl ? "https" : "http";
     const serviceUrl = `${protocol}://${host}:${port}/${route}`;
 
     const httpServer = ssl ? https.createServer(ssl, server) : http.createServer(server);
+    const socketPath = `/${route}/socket.io`;
 
-    const WebSocket = socketIO(httpServer);
+    const WebSocket = socketIO(httpServer, {
+      path: socketPath,
+      cors: {
+        origin: "*",
+        methods: ["GET", "POST"],
+      },
+    });
 
-    SocketEmitter.apply(ServerManager, [namespace, WebSocket]);
+    SocketEmitter.apply(ServerManager, [route, WebSocket]);
 
     const wsProtocol = protocol === "https" ? "wss" : "ws";
 
@@ -57,7 +61,8 @@ module.exports = function createServerManager(customServer) {
       route: `/${route}`,
       port,
       serviceUrl,
-      namespace: `${wsProtocol}://${host}:${port}/${namespace}`,
+      socketPath,
+      namespace: `${wsProtocol}://${host}:${port}/${route}`,
       SystemLynxService: true,
     };
 
@@ -92,7 +97,6 @@ module.exports = function createServerManager(customServer) {
       host,
       route,
       serviceUrl,
-      staticRouting,
       useService,
       useREST,
       port,
@@ -113,19 +117,18 @@ module.exports = function createServerManager(customServer) {
       ...reserved_methods,
     ];
     const methods = parseMethods(Module, exclude_methods, useREST);
-    const namespace = staticRouting ? name : shortId();
-
-    SocketEmitter.apply(Module, [namespace, WebSocket]);
+    const path = `${route}/${name}`;
 
     const before_validators = [...beforeware.$all, ...(beforeware[name] || [])];
     const after_validators = [...afterware.$all, ...(afterware[name] || [])];
 
     if (useService) {
-      const path = staticRouting ? `${route}/${name}` : `${shortId()}/${shortId()}`;
+      SocketEmitter.apply(Module, [path, WebSocket]);
+
       const wsProtocol = protocol === "https" ? "wss" : "ws";
 
       modules.push({
-        namespace: `${wsProtocol}://${host}:${port}/${namespace}`,
+        namespace: `${wsProtocol}://${host}:${port}/${path}`,
         route: `/${path}`,
         name,
         methods,

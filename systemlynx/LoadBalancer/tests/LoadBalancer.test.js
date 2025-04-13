@@ -67,7 +67,8 @@ describe("LoadBalancer", () => {
         "modules",
         "route",
         "namespace",
-        "serviceUrl"
+        "serviceUrl",
+        "socketPath"
       )
       .that.has.property("modules")
       .that.is.an("array")
@@ -132,7 +133,8 @@ describe("LoadBalancer.clones (Module)", () => {
         "modules",
         "route",
         "namespace",
-        "serviceUrl"
+        "serviceUrl",
+        "socketPath"
       )
       .that.has.property("modules")
       .that.is.an("array")
