@@ -10,6 +10,32 @@ const makeQuery = (data) =>
     (query, name) => (query += `${name}=${data[name]}&`),
     "?"
   );
+
+const extractFilesFromArguments = (__arguments) => {
+  let foundFile = null;
+  let fileType = null;
+
+  __arguments.forEach((arg) => {
+    if (isObject(arg)) {
+      if ("file" in arg) {
+        if (foundFile)
+          throw new Error("Only one file or files allowed across arguments.");
+        foundFile = arg.file;
+        fileType = "file";
+        arg.file = "__file__";
+      } else if ("files" in arg) {
+        if (foundFile)
+          throw new Error("Only one file or files allowed across arguments.");
+        foundFile = arg.files;
+        fileType = "files";
+        arg.files = "__files__";
+      }
+    }
+  });
+
+  return { foundFile, fileType };
+};
+
 module.exports = function ServiceRequestHandler(
   httpClient,
   protocol,
@@ -23,14 +49,20 @@ module.exports = function ServiceRequestHandler(
 
     const tryRequest = (cb, errCount = 0) => {
       const { route, port, host } = this.__connectionData();
-      const singleFileURL = `${protocol}${host}:${port}/sf${route}/${fn}`;
-      const multiFileURL = `${protocol}${host}:${port}/mf${route}/${fn}`;
+      const { foundFile, fileType } = extractFilesFromArguments(__arguments);
+
       const defaultURL = `${protocol}${host}:${port}${route}/${fn}`;
-      const { file, files } = __arguments[0] || {};
-      const url = file ? singleFileURL : files ? multiFileURL : defaultURL;
+      const url =
+        fileType === "file"
+          ? `${protocol}${host}:${port}/sf${route}/${fn}`
+          : fileType === "files"
+          ? `${protocol}${host}:${port}/mf${route}/${fn}`
+          : defaultURL;
+
       const defaultHeaders = this.headers();
       const headers = !isEmpty(defaultHeaders) ? defaultHeaders : Service.headers();
-      if (url === defaultURL) {
+
+      if (!foundFile) {
         const query =
           method === "get" && isObject(__arguments[0]) ? makeQuery(__arguments[0]) : "";
         httpClient
@@ -43,13 +75,12 @@ module.exports = function ServiceRequestHandler(
           .then((results) => cb(null, results))
           .catch((err) => ErrorHandler(err, errCount, cb));
       } else {
-        delete __arguments[0].file;
-        delete __arguments[0].files;
-        const formData = {};
-        formData.__arguments = __arguments;
-        if (file) formData.file = isNode ? convertToReadStream(file) : file;
-        if (Array.isArray(files))
-          formData.files = isNode ? files.map(convertToReadStream) : files;
+        const formData = { __arguments };
+        if (fileType === "file")
+          formData.file = isNode ? convertToReadStream(foundFile) : foundFile;
+        if (fileType === "files")
+          formData.files = isNode ? foundFile.map(convertToReadStream) : foundFile;
+
         httpClient
           .upload({
             url,

@@ -80,11 +80,19 @@ module.exports = function createRouter(server, config) {
     const getArguments = () => {
       const args = body.__arguments || [];
       if (!isEmpty(query) && !args.length) args.push(query);
-      if (isObject(args[0]) && method === "POST")
-        args[0] = { ...args[0], ...(file && { file }), ...(files && { files }) };
       return args;
     };
-    req.arguments = getArguments();
+
+    const args = getArguments();
+
+    args.forEach((arg) => {
+      if (isObject(arg)) {
+        if (arg.file === "__file__") arg.file = file;
+        if (arg.files === "__files__") arg.files = files;
+      }
+    });
+
+    req.arguments = args;
     req.presets = presets;
     res.sendError = sendError;
     res.sendResponse = sendResponse;

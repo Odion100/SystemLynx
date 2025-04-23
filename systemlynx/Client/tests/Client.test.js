@@ -292,6 +292,9 @@ describe("Service", () => {
       this.save = ({ file, files, message }) => {
         return { file, files, message };
       };
+      this.testOtherParams = (param1, { file, files, message }) => {
+        return { files, message, param1 };
+      };
     });
     await service.startService({
       route,
@@ -311,6 +314,10 @@ describe("Service", () => {
       message: "multi file upload test confirmation",
     });
 
+    const extraParamResponse = await storage.testOtherParams("OtherParamsTest", {
+      files: [TEST_FILE, fs.createReadStream(TEST_FILE)],
+      message: "other params file upload test confirmation",
+    });
     expect(singleFileResponse).to.be.an("object").that.has.all.keys("file", "message");
     expect(singleFileResponse.message).to.be.an("string");
     expect(singleFileResponse.message).to.equal("single file upload test confirmation");
@@ -326,6 +333,21 @@ describe("Service", () => {
     expect(multiFileResponse.files[1]).to.be.an("object");
     expect(multiFileResponse.files[0].originalname).to.equal("test.file.json");
     expect(multiFileResponse.files[1].mimetype).to.equal("application/json");
+
+    expect(extraParamResponse)
+      .to.be.an("object")
+      .that.has.all.keys("files", "message", "param1");
+    expect(extraParamResponse.message).to.be.an("string");
+    expect(extraParamResponse.message).to.equal(
+      "other params file upload test confirmation"
+    );
+    expect(extraParamResponse.param1).to.be.an("string");
+    expect(extraParamResponse.param1).to.equal("OtherParamsTest");
+    expect(extraParamResponse.files).to.be.an("array");
+    expect(extraParamResponse.files[0]).to.be.an("object");
+    expect(extraParamResponse.files[1]).to.be.an("object");
+    expect(extraParamResponse.files[0].originalname).to.equal("test.file.json");
+    expect(extraParamResponse.files[1].mimetype).to.equal("application/json");
   });
 
   it("should maintain service and module level headers on a Client instance", async () => {
