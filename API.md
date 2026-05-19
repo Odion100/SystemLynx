@@ -1,200 +1,782 @@
-**IN WORKING PROGRESS**
-
 # SystemLynx API Documentation
 
-Welcome to the docs! Following is a list of the objects used and created when developing web APIs with SystemLynx. SystemLynx is an end-to-end framework for developing modular, microservices software systems in NodeJS. Check out [**Quick Start**](https://github.com/Odion100/SystemLynx#quick-start) for an example of how simple it is to develope object-orientated APIs with SystemLynx.
+SystemLynx is a Node.js framework for building modular, distributed web APIs. It lets you host plain JavaScript objects as **Modules** on a server and load them transparently into a client application, calling their methods over HTTP or WebSockets.
 
-<details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/blob/tasksjs2.0/API.md#app">App</a></b></summary>
-    
-- [**startService(options)**](https://github.com/Odion100/SystemLynx/blob/tasksjs2.0/API.md#appstartserviceoptions) 
-- [**loadService(name, url)**](https://github.com/Odion100/SystemLynx/blob/tasksjs2.0/API.md#apploadserviceurl) 
-- [**onLoad(callback)**](https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#apponloadcallback) 
-- [**module(name, constructor [,reserved_methods])**]() 
-- [**config(constructor)**](https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#appconfigconstructor) 
-- [**on(event, callback)**]() 
-- [**emit(event, payload)**]()
-
-</details>
-
-<details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#client">Client</a></b></summary>
-    
-- [**loadService(url)**]()
-
-</details>
-
-<details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#service">Service</a></b></summary>
-    
-- [**startService(options)**]() 
-- [**module(name, constructor [,options])**]() 
-- [**Server()**]() 
-- [**WebSocket()**]()
-
-</details>
-
-<details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md#service">LoadBalancer</a></b></summary>
-    
-- [**startService(options)**]() 
-- [**module(name, constructor [,options])**]() 
-- [**Server()**]() 
-- [**WebSocket()**]() 
-- [**clones**]()
-  - [**register(options)**]()  
-  - [**dispatch(event)**]()
-  - [**assignDispatch(event)**]()
-
-</details>
+For a high-level introduction see the [README](./README.md).
 
 ---
 
-<details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md">ServerModule</a></b></summary>
-    
-- [**...constructedMethods**]()
-- [**on(name, callback)**]() 
-- [**emit(name, data)**]()
+## Table of Contents
 
-</details>
-
-<details>
-   <summary><b><a href="https://github.com/Odion100/SystemLynx/tasksjs2.0/API.md">ClientModule</a></b></summary>
-    
-- [**...loadedMethods**]() 
-- [**on(name, callback)**]() 
-- [**emit(name, data)**]()
-
-</details>
+- [Service](#service)
+- [ServerModule](#servermodule)
+- [Middleware](#middleware)
+- [App](#app)
+- [Client](#client)
+- [ClientModule](#clientmodule)
+- [LoadBalancer](#loadbalancer)
+- [HttpClient](#httpclient)
 
 ---
 
 ## Service
 
-In SystemLynx a **Service** is a class used to host objects that can be later loaded into a client application using a SystemLynx **Client.** Get a handle on a SystemLynx **Service** by de-structuring the SystemLynx export.
-
-```javascript
-const { Service } = require(“systemlynx”)
-```
-
-## Service.module(name, constructor)
-
-Use the `Service.module(name, constructor/object)` method to create a **ServerModule**, which is an object that is hosted by a **SystemLynx Service**. This will allows you to later load an instance of that object into a client application. The **Service.module(name, constructor)** method takes the (string) name assigned to the object as the first argument, and the object itself, or a constructor function, as the second argument, and will return the constructed **ServerModule.** See the examples below.
+`Service` is used to host objects that can be loaded remotely by a SystemLynx `Client`.
 
 ```javascript
 const { Service } = require("systemlynx");
+```
 
-const UsersConstructor = {
-  add:function(data) {
-   return { message: "You have successfully called Users.add(...)" };
+Alternatively, use `createService` to create an isolated instance:
+
+```javascript
+const { createService } = require("systemlynx");
+const Service = createService();
+```
+
+---
+
+### Service.module(name, constructor [, reserved_methods])
+
+Registers an object or constructor function as a **ServerModule** hosted by this Service. Returns the constructed module.
+
+| Parameter | Type | Description |
+|:---|:---|:---|
+| `name` | string | The name used to identify and route to this module |
+| `constructor` | object \| function | The module object, or a constructor function where `this` is the module instance |
+| `reserved_methods` | string[] | Method names to exclude from routing (not accessible remotely) |
+
+**Object constructor:**
+```javascript
+const Users = {
+  add(data) {
+    return { message: "User added" };
+  },
+  find(query) {
+    return { message: "Users found" };
   }
 };
-constr OrdersConstructor = function () {
-  const Orders = this;
 
-  Orders.find = function (arg1, arg2) {
-    return { message: "You have successfully called the Orders.find(...)" };
-  };
-}
-
-const Users = Service.module("Users", UsersConstructor);
-
-const Orders = Service.module("Orders", OrdersConstructor);
+Service.module("Users", Users);
 ```
 
-## Service.startService(options)
+**Function constructor:**
 
-Use the `Service.startService(options)` method to setup hosting and routing for the **Service**. Calling this method will start an **ExpressJS** Server and a **Socket.io** WebSocket Server, and allow the modules created by the **Service** to be loaded into a client application. This method returns a promise that will resolve once the Express server is running.
+When a function is used, `this` inside it is the module instance. Methods added to `this` are exposed remotely. The constructor receives the Express server and Socket.io instance as arguments, useful for adding custom routes or listeners.
 
 ```javascript
-const { Service } = require("systemlynx");
-const route = "my-route/whatever";
-const port = 8100;
-const host = "localhost";
+Service.module("Orders", function (server, WebSocket) {
+  const Orders = this;
 
-const promise = Service.startService({ route, port, host });
+  Orders.find = async function (query) {
+    return { results: [] };
+  };
+
+  Orders.create = async function (data) {
+    return { created: true };
+  };
+
+  // Scope middleware to specific methods
+  Orders.before("create", validateData);
+  Orders.after("find", formatResults);
+});
 ```
 
-Following is a list of options that can be passed to the **Service.startService(options)** method.
+**Excluding methods from routing:**
 
-| Name          |  Type   | O/R/C | Description                                                                                                                                            |
-| :------------ | :-----: | :---: | :----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| route         | string  |   R   | The route from which the service can be loaded.                                                                                                        |
-| port          | number  |   R   | The port on which to start the Express server.                                                                                                         |
-| host          | string  |   O   | The host from which the **Service** can be reached.                                                                                                    |
-| socketPort    | string  |   R   | The port on which to start the Socket.io Websocket server. <br/><br/> Default value : **_random for digit number_**                                    |
-| useRest       | boolean |   O   | When this is true a RESTful route will be created for any **ServerModule** method which is named after a REST method <br/><br/> Default value: `false` |
-| useService    | boolean |   O   | The route from which the service can be loaded.                                                                                                        |
-| staticRouting | boolean |   O   | The route from which the service can be loaded.                                                                                                        |
-| middleware    | string  |   R   | The route from which the service can be loaded.                                                                                                        |
+```javascript
+Service.module("Users", Users, ["internalMethod", "helperFn"]);
+```
+
+---
+
+### Service.startService(options)
+
+Starts the Express and Socket.io servers and sets up routing for all registered modules. Returns a promise that resolves with the service connection data once the server is listening.
+
+```javascript
+await Service.startService({
+  route: "api/users",
+  port: 4400,
+  host: "localhost",
+});
+```
+
+| Option | Type | Required | Description |
+|:---|:---|:---:|:---|
+| `route` | string | ✓ | The base route for this service (e.g. `"api/users"`) |
+| `port` | number | ✓ | The port to listen on |
+| `host` | string | | Hostname for the service URL. Default: `"localhost"` |
+| `protocol` | string | | `"http"` or `"https"`. Inferred from `ssl` if not set |
+| `ssl` | object | | `{ key, cert }` — file contents for HTTPS. When provided, an HTTPS server is created |
+| `useREST` | boolean | | When `true`, module methods named `get`, `post`, `put`, or `delete` are also exposed as REST routes. Default: `false` |
+
+**With SSL:**
+```javascript
+const fs = require("fs");
+
+await Service.startService({
+  route: "api/users",
+  port: 443,
+  host: "example.com",
+  protocol: "https",
+  ssl: {
+    key: fs.readFileSync("/path/to/key.pem"),
+    cert: fs.readFileSync("/path/to/cert.pem"),
+  },
+});
+```
+
+---
+
+### Service.before([name,] ...middleware)
+
+Adds middleware that runs **before** a module method is called.
+
+- With no name — runs before every method on every module
+- With a module name — runs before every method on that module
+- With `"ModuleName.methodName"` — runs before that specific method only
+- With `"$all"` — same as no name, explicitly runs before everything
+
+```javascript
+// Before every method on every module
+Service.before(authenticate);
+
+// Same, explicit form
+Service.before("$all", authenticate);
+
+// Before every method on the Users module
+Service.before("Users", requireAuth);
+
+// Before only Users.delete
+Service.before("Users.delete", requireAdmin);
+
+// Multiple middleware in one call
+Service.before("Users.edit", validate, sanitize);
+```
+
+---
+
+### Service.after([name,] ...middleware)
+
+Adds middleware that runs **after** a module method returns, before the response is sent. Same scoping rules as `Service.before`.
+
+```javascript
+// After every method
+Service.after(logResponse);
+
+// After every method on Orders
+Service.after("Orders", formatResponse);
+
+// After only Orders.find
+Service.after("Orders.find", attachMetadata);
+```
+
+---
+
+### Service.server
+
+The underlying Express app instance. Use this to add custom Express routes, static file serving, or any Express middleware.
+
+```javascript
+Service.module("Storage", function (server) {
+  const express = require("express");
+  server.use("/files", express.static("/path/to/files"));
+
+  this.list = () => { /* ... */ };
+});
+```
+
+---
+
+### Service.WebSocket
+
+The Socket.io server instance.
+
+---
+
+## ServerModule
+
+A `ServerModule` is the object returned by `Service.module()`. It is also the value of `this` inside a module constructor function. It has the following built-in methods in addition to whatever methods you define.
+
+---
+
+### module.on(eventName, callback [, options])
+
+Listens for a WebSocket event emitted to this module's namespace. Returns an unsubscribe function.
+
+```javascript
+const Users = Service.module("Users", function () {
+  this.on("user_connected", (data) => {
+    console.log("User connected:", data);
+  });
+});
+```
+
+| Option | Type | Description |
+|:---|:---|:---|
+| `eventId` | string | Stable key for this listener. Re-registering with the same `eventId` replaces the previous listener instead of adding a new one |
+| `interval` | number | Throttle interval in milliseconds |
+| `limit` | number | Max calls within the throttle interval |
+
+---
+
+### module.once(eventName, callback [, options])
+
+Same as `on`, but the listener is automatically removed after firing once. Returns an unsubscribe function.
+
+---
+
+### module.emit(eventName, data)
+
+Emits a WebSocket event to all connected clients listening on this module.
+
+```javascript
+Service.module("Orders", function () {
+  this.create = function (data) {
+    const order = createOrder(data);
+    this.emit("order_created", order);
+    return order;
+  };
+});
+```
+
+This is also available in middleware via `req.module.emit(...)`:
+
+```javascript
+function notifyClients(req, res, next) {
+  req.module.emit(`updated:${req.returnValue._id}`, req.returnValue);
+  next();
+}
+```
+
+---
+
+### module.$clearEvent(eventName [, fn])
+
+Removes event listeners. If a function is provided, removes only the listener matching that function's name. If no function is provided, removes all listeners for that event.
+
+```javascript
+module.$clearEvent("order_created");           // remove all
+module.$clearEvent("order_created", myHandler); // remove by name
+```
+
+---
+
+### module.destroy()
+
+Removes all event listeners on this module.
+
+---
+
+### module.before([name,] ...middleware)
+
+Adds middleware scoped to this module. Same as `Service.before("ModuleName", ...)` but callable from within the constructor.
+
+```javascript
+Service.module("Users", function () {
+  this.edit = editUser;
+  this.delete = deleteUser;
+
+  this.before("edit", validateEditData);
+  this.before("delete", requireAdmin);
+  this.after("$all", logAction);
+});
+```
+
+---
+
+### module.after([name,] ...middleware)
+
+Same as `module.before` but runs after the method returns.
+
+---
+
+## Middleware
+
+Middleware functions follow the Express convention: `(req, res, next) => {}`. They can be async.
+
+SystemLynx adds the following properties to the request and response objects.
+
+### Request properties
+
+| Property | Type | Description |
+|:---|:---|:---|
+| `req.module_name` | string | Name of the module being called (e.g. `"Users"`) |
+| `req.fn` | string | Name of the method being called (e.g. `"find"`) |
+| `req.arguments` | array | The arguments passed by the client to the method |
+| `req.module` | object | The ServerModule instance itself |
+| `req.returnValue` | any | The value returned by the method — available in `after` middleware |
+
+Any properties you add to `req` are accessible in subsequent middleware in the chain:
+
+```javascript
+function authenticate(req, res, next) {
+  const token = req.headers.authorization;
+  const session = verifyToken(token);
+
+  if (!session) return res.sendError({ status: 401, message: "Unauthorized" });
+
+  req.session = session;
+  next();
+}
+
+function requireAdmin(req, res, next) {
+  if (!req.session.isAdmin)
+    return res.sendError({ status: 403, message: "Forbidden" });
+  next();
+}
+```
+
+### Response methods
+
+| Method | Description |
+|:---|:---|
+| `res.sendError({ status, message })` | Sends an error response and stops the middleware chain |
+| `res.sendResponse(value)` | Sends a successful response with the given value |
+
+```javascript
+function validate(req, res, next) {
+  const [data] = req.arguments;
+  if (!data.name) return res.sendError({ status: 400, message: "name is required" });
+  next();
+}
+```
+
+**Modifying the return value in `after` middleware:**
+
+```javascript
+function attachMeta(req, res, next) {
+  req.returnValue.timestamp = Date.now();
+  next();
+}
+```
+
+---
 
 ## App
 
-**App** combinds the both functionalites of SystemLynx Service and Client into one object, while also providing a module interface and lifecycle events. Access the App instance by deconcatanating from the object return when loading SystemLynx `require("systemlynx")`.
+`App` combines the functionality of `Service` and `Client` into a single object with a chainable interface and lifecycle events. It is the recommended entry point for production services.
 
 ```javascript
 const { App } = require("systemlynx");
 ```
 
-## App.module(name, constructor [,reserved_methods])
+To use a custom Express server or create isolated instances:
 
-Use **App.module(name, constructor)** function to create or pass an object that can be loaded by a SystemLynx Client.
+```javascript
+const { createApp } = require("systemlynx");
+const express = require("express");
 
-- **_name_** (string) - name assigned to the module or object
-- **_constructor_** (object/function) -
+const server = express();
+const App = createApp(server);
+```
 
-## App.startService(options)
+---
 
-## App.loadService(name, url)
+### App.startService(options)
 
-## App.onLoad(callback)
+Same options as [`Service.startService`](#servicestartserviceoptions). Returns `App` for chaining.
 
-## App.module(name, constructor)
+```javascript
+App.startService({ route: "api/profiles", port: 4400, host: "localhost" });
+```
 
-## App.config(constructor)
+---
+
+### App.module(name, constructor [, reserved_methods])
+
+Same as [`Service.module`](#servicemodulename-constructor--reserved_methods). Returns `App` for chaining.
+
+```javascript
+App.startService({ route: "api", port: 4400 })
+  .module("Users", UsersConstructor)
+  .module("Orders", OrdersConstructor);
+```
+
+---
+
+### App.loadService(name, url)
+
+Loads a remote SystemLynx Service and makes it available inside module constructors via `this.useService(name)`. Returns `App` for chaining.
+
+```javascript
+App.startService({ route: "api/basketball", port: 4401 })
+  .loadService("Profiles", "http://localhost:4400/api/profiles")
+  .module("Games", function () {
+    const Profiles = this.useService("Profiles");
+
+    this.create = async function (data) {
+      const profile = await Profiles.Users.get({ id: data.userId });
+      // ...
+    };
+  });
+```
+
+---
+
+### App.onLoad(callback)
+
+Fires a callback when the most recently chained `loadService` connects. Receives the loaded service object.
+
+```javascript
+App.loadService("Profiles", url)
+  .onLoad((Profiles) => {
+    console.log("Profiles service connected:", Object.keys(Profiles));
+  });
+```
+
+---
+
+### App.config(constructor)
+
+Registers a configuration constructor that runs before modules are initialized. Use it to set up shared state or configuration accessible to all modules via `this.useConfig()`.
+
+```javascript
+App.config(function (next) {
+  this.dbConnection = connectToDatabase();
+  this.settings = loadSettings();
+  next();
+});
+
+App.module("Users", function () {
+  const config = this.useConfig();
+  this.db = config.dbConnection;
+});
+```
+
+---
+
+### App.before / App.after
+
+Same as [`Service.before`](#servicebeforename-middleware) and [`Service.after`](#serviceafterename-middleware).
+
+```javascript
+App.startService({ route: "api", port: 4400 })
+  .before("$all", authenticate)
+  .module("Users", Users)
+  .module("Orders", Orders);
+```
+
+---
+
+### App.on(eventName, callback)
+
+Listens for a lifecycle event on the App. Returns an unsubscribe function.
+
+| Event | Payload | Description |
+|:---|:---|:---|
+| `"ready"` | system object | Fires when the App has fully initialized — service started, all modules loaded, all remote services connected |
+| `"service_loaded"` | service object | Fires each time a remote service finishes connecting |
+| `"service_loaded:<name>"` | service object | Fires when the named service finishes connecting |
+| `"failed_connection"` | `{ err, name, url }` | Fires when a remote service fails to connect |
+
+```javascript
+App.on("ready", function (system) {
+  console.log("App ready");
+  console.log("Modules:", system.modules.map(m => m.name));
+});
+
+App.on("service_loaded:Profiles", (Profiles) => {
+  console.log("Profiles connected");
+});
+```
+
+The `this` value inside a `"ready"` callback is the system context, giving access to `this.useModule()`, `this.useService()`, and `this.useConfig()`.
+
+---
+
+### App.emit(eventName, data)
+
+Emits a lifecycle event on the App.
+
+---
+
+### App.use(plugin)
+
+Registers a plugin function that runs before App initialization. The plugin receives `(App, system)` and can add modules, load services, or configure the App.
+
+```javascript
+const myPlugin = (App, system) => {
+  App.loadService("Analytics", "http://localhost:4500/analytics");
+  App.module("Tracker", TrackerConstructor);
+};
+
+App.use(myPlugin).startService({ route: "api", port: 4400 });
+```
+
+---
+
+### System context inside modules
+
+Inside any module constructor (and `App.on("ready", ...)` callbacks), `this` includes:
+
+| Method | Description |
+|:---|:---|
+| `this.useModule(name)` | Returns another module registered on this App by name |
+| `this.useService(name)` | Returns a remote service loaded via `App.loadService(name, url)` |
+| `this.useConfig()` | Returns the configuration object built by `App.config(constructor)` |
+
+```javascript
+App.module("Games", function () {
+  const Users = this.useModule("Users");
+  const Profiles = this.useService("Profiles");
+
+  this.create = async function (data) {
+    const user = await Users.get({ id: data.userId });
+    const profile = await Profiles.Players.get({ id: data.userId });
+    // ...
+  };
+});
+```
 
 ---
 
 ## Client
 
-## Client.loadService(url)
+`Client` is used to load a remote SystemLynx Service and call its module methods from a client application.
+
+```javascript
+const { Client } = require("systemlynx");
+```
 
 ---
 
-## Service
+### Client.loadService(url [, options])
 
-Service is a SystemLynx abstraction used to server objects that can be loaded by a SystemLynx Client using the `Client.loadService(url)` method.
-
-Call require("systemlynx") and de-concatenate from the object it returns.
+Loads a remote SystemLynx Service. Returns a promise that resolves into an object containing all the modules hosted by that service, plus service-level methods.
 
 ```javascript
-const { Service } = require("systemlynx");
+const { Users, Orders } = await Client.loadService("http://localhost:4400/api");
 ```
 
-The Service object has the following methods:
+| Option | Type | Description |
+|:---|:---|:---|
+| `forceReload` | boolean | When `true`, bypasses the cache and reconnects even if this URL was already loaded |
 
-- **_Service.module(name, constructor [,reserved_methods])_** - Used to create or pass an object that is hosted by the Service.
-- **_Service.startService(options)_** - Used
-- **_Service.Server()_** - Returns the expressJS app instance used to handle routing to the _Services_.
-- **_Service.WebSocket()_** - Returns socket.io WebSocket instance used to emit events from the _Services_.
-
-## Service.module(name, constructor [,reserved_methods])
-
-- **Name** - String -
-  Use the `Service.module(name, constructor, [,options])` method to register an object to be hosted by a _SystemLynx Service_. This will allows you to load an instance of that object onto a client application, and call any methods on that object remotely.
+**Loading multiple services:**
 
 ```javascript
-const { Service } = require("systemlynx");
+const ProfilesAPI = await Client.loadService("http://localhost:4400/api/profiles");
+const BasketballAPI = await Client.loadService("http://localhost:4401/api/basketball");
 
-const Users = {};
-
-Users.add = function (data, callback) {
-  console.log(data);
-  callback(null, { message: "You have successfully called the Users.add method" });
-};
+const user = await ProfilesAPI.Users.get({ id: "abc123" });
+const games = await BasketballAPI.Games.find({ userId: "abc123" });
 ```
 
-Service.startService
+**Service-level methods on the returned object:**
+
+| Method | Description |
+|:---|:---|
+| `service.on(event, callback)` | Listen for service-level WebSocket events (`"connect"`, `"disconnect"`, `"reconnect"`) |
+| `service.setHeaders(headers)` | Set default headers sent with every request from this service |
+| `service.headers()` | Returns the current default headers |
+| `service.resetConnection()` | Manually trigger a reconnection |
+| `service.disconnect()` | Disconnect the WebSocket |
 
 ---
+
+## ClientModule
+
+Each module on a loaded service is a `ClientModule`. Calling any method returns a promise that resolves with the method's return value.
+
+```javascript
+const { Users } = await Client.loadService(url);
+
+const result = await Users.find({ city: "New York" });
+```
+
+File uploads are handled automatically — include a `file` (single) or `files` (array) property on any argument object:
+
+```javascript
+const result = await Storage.save({
+  file: fs.createReadStream("/path/to/photo.jpg"),
+  userId: "abc123",
+});
+
+const result = await Storage.save({
+  files: [fs.createReadStream("a.jpg"), fs.createReadStream("b.jpg")],
+  albumId: "xyz",
+});
+```
+
+---
+
+### module.on(eventName, callback [, options])
+
+Listens for WebSocket events emitted by the server-side module. Returns an unsubscribe function — useful for React `useEffect` cleanup.
+
+```javascript
+const unsubscribe = Orders.on("order_created", (data) => {
+  console.log("New order:", data);
+});
+
+// Later, to clean up:
+unsubscribe();
+```
+
+| Option | Type | Description |
+|:---|:---|:---|
+| `eventId` | string | Stable key for this listener. Re-registering with the same `eventId` replaces the previous listener. Useful in React re-renders |
+| `interval` | number | Throttle interval in milliseconds |
+| `limit` | number | Max calls within the throttle interval |
+
+**React usage:**
+```javascript
+useEffect(() => {
+  const unsubscribe = Orders.on("order_created", handleNewOrder, {
+    eventId: "order-list-listener",
+  });
+  return unsubscribe;
+}, []);
+```
+
+---
+
+### module.once(eventName, callback [, options])
+
+Same as `on`, but fires only once then removes itself automatically. Returns an unsubscribe function.
+
+---
+
+### module.emit(eventName, data)
+
+Emits a WebSocket event to the server-side module's namespace.
+
+---
+
+### module.$clearEvent(eventName [, fn])
+
+Removes listeners. Without a function argument, removes all listeners for that event.
+
+---
+
+### module.destroy()
+
+Removes all listeners on this module.
+
+---
+
+### module.setHeaders(headers)
+
+Sets default HTTP headers sent with every request from this module. Module-level headers take priority over service-level headers.
+
+```javascript
+Users.setHeaders({ Authorization: `Bearer ${token}` });
+```
+
+---
+
+### module.headers()
+
+Returns the current module-level headers object.
+
+---
+
+---
+
+## LoadBalancer
+
+`LoadBalancer` distributes requests across multiple clones of a Service. Clients connect to the LoadBalancer URL — the LoadBalancer handles routing transparently.
+
+```javascript
+const { LoadBalancer } = require("systemlynx");
+```
+
+---
+
+### LoadBalancer.startService(options)
+
+Same options as [`Service.startService`](#servicestartserviceoptions). Starts the LoadBalancer as a Service.
+
+```javascript
+await LoadBalancer.startService({ route: "api/users", port: 4400 });
+```
+
+---
+
+### LoadBalancer.clones
+
+The `clones` module manages clone registration and routing. It is itself a `ServerModule`, so clients can call its methods remotely.
+
+---
+
+#### clones.register(options, callback)
+
+Registers a new clone of a service with the LoadBalancer. Once registered, the LoadBalancer will route requests to it using round-robin.
+
+```javascript
+const { clones } = await Client.loadService("http://localhost:4400/api/users");
+
+clones.register({ host: "localhost", port: 4401, route: "/api/users" }, (err, result) => {
+  if (err) console.error("Registration failed:", err);
+  else console.log("Clone registered:", result);
+});
+```
+
+| Option | Type | Required | Description |
+|:---|:---|:---:|:---|
+| `host` | string | ✓ | Hostname of the clone |
+| `port` | number | ✓ | Port the clone is running on |
+| `route` | string | ✓ | Route of the clone service |
+
+---
+
+#### clones.dispatch(event, callback)
+
+Dispatches a named event to all registered clones.
+
+---
+
+#### clones.assignDispatch(event, callback)
+
+Assigns handling of an event to a single clone, preventing duplicate handling across instances.
+
+---
+
+## HttpClient
+
+A lightweight HTTP client for making requests to SystemLynx services or any HTTP endpoint.
+
+```javascript
+const { HttpClient } = require("systemlynx");
+```
+
+---
+
+### HttpClient.request(options)
+
+Makes an HTTP request. Returns a promise.
+
+```javascript
+const data = await HttpClient.request({
+  url: "http://localhost:4400/api/users/Users/find",
+  method: "put",
+  body: { __arguments: [{ city: "New York" }] },
+  headers: { Authorization: "Bearer token" },
+});
+```
+
+| Option | Type | Description |
+|:---|:---|:---|
+| `url` | string | Request URL |
+| `method` | string | HTTP method (`"get"`, `"post"`, `"put"`, `"delete"`). Default: `"get"` |
+| `body` | object | Request body |
+| `headers` | object | Request headers |
+
+---
+
+### HttpClient.upload(options)
+
+Uploads files using multipart form data. Returns a promise.
+
+```javascript
+const result = await HttpClient.upload({
+  url: "http://localhost:4400/sf/api/storage/Storage/save",
+  method: "put",
+  formData: {
+    __arguments: [{ message: "profile photo" }],
+    file: fs.createReadStream("/path/to/photo.jpg"),
+  },
+});
+```

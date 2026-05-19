@@ -17,13 +17,13 @@ const extractFilesFromArguments = (__arguments) => {
 
   __arguments.forEach((arg) => {
     if (isObject(arg)) {
-      if ("file" in arg) {
+      if (arg.file) {
         if (foundFile)
           throw new Error("Only one file or files allowed across arguments.");
         foundFile = arg.file;
         fileType = "file";
         arg.file = "__file__";
-      } else if ("files" in arg) {
+      } else if (arg.files) {
         if (foundFile)
           throw new Error("Only one file or files allowed across arguments.");
         foundFile = arg.files;

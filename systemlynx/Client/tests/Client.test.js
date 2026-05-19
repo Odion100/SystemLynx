@@ -46,7 +46,9 @@ describe("Client", () => {
       .that.has.all.keys(
         "emit",
         "on",
+        "once",
         "$clearEvent",
+        "destroy",
         "resetConnection",
         "disconnect",
         "headers",
@@ -66,7 +68,9 @@ describe("Client", () => {
       .that.has.all.keys(
         "emit",
         "on",
+        "once",
         "$clearEvent",
+        "destroy",
         "disconnect",
         "headers",
         "setHeaders",

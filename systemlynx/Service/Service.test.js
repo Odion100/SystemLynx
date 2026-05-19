@@ -70,7 +70,7 @@ describe("Service.module(constructor)", () => {
 
     expect(mod)
       .to.be.an("Object")
-      .that.has.all.keys("on", "emit", "$clearEvent", "before", "after", "test", "test2")
+      .that.has.all.keys("on", "once", "emit", "$clearEvent", "destroy", "before", "after", "test", "test2")
       .that.respondsTo("on")
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
@@ -205,8 +205,10 @@ describe("Service.module(object)", () => {
         "action1",
         "action2",
         "on",
+        "once",
         "emit",
         "$clearEvent",
+        "destroy",
         "before",
         "after"
       )

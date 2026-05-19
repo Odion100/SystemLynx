@@ -26,8 +26,10 @@ describe("LoadBalancer()", () => {
       .to.be.an("object")
       .that.has.all.keys(
         "on",
+        "once",
         "emit",
         "$clearEvent",
+        "destroy",
         "before",
         "after",
         "clones",
@@ -93,9 +95,11 @@ describe("LoadBalancer.clones (Module)", () => {
       .to.be.an("Object")
       .that.has.all.keys(
         "on",
+        "once",
         "emit",
         "$emit",
         "$clearEvent",
+        "destroy",
         "before",
         "after",
         "register",

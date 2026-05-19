@@ -34,6 +34,7 @@ module.exports = function createRouter(server, config) {
       [`/${route}`],
       (req, res, next) => {
         req.module_name = module_name;
+        req.moduleName = module_name;
         req.fn = method;
         req.Module = Module;
         req.module = Module;

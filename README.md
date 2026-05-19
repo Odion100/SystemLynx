@@ -42,7 +42,7 @@ Service.module("Users", Users);
 
 In the code above we assigned an object to the variable `Users` and gave it an add method. The `Service.module(name, constructor/object)` function takes the name assigned to the object as the first argument and the object itself as the second argument.
 
-Alternatively, you can use a constructor function instead of an object as the second argument. In the example below we create another **Module** called "Orders". This time we use a constructor function as the second argument of the to **Service.module** function. The `this` value is the initial instance of the **Module** object. Every method added to the `this` value will be accessible when the object is loaded by a **SystemLynx Client**. Note: **Module** methods can be synchronous or asynchronous functions.
+Alternatively, you can use a constructor function instead of an object as the second argument. In the example below we create another **Module** called "Orders". This time we use a constructor function as the second argument of the to **Service.module** function. The `this` value is the initial instance of the **Module** object. Every method added to the `this` value will be accessible when the object is loaded by a **SystemLynx Client**. Note: **Module** methods can be synchronous or asynchronous functions.
 
 ```javascript
 const { Service } = require("systemlynx");
@@ -159,8 +159,8 @@ const Users = {};
 
 Users.add = function (data) {
   console.log(data);
-  return { message: "You have successfully called the Users.add method" };
   this.emit("new_user", { message: "new_user event test" });
+  return { message: "You have successfully called the Users.add method" };
 };
 
 Service.module("Users", Users);
@@ -175,4 +175,104 @@ Service.module("Orders", function () {
 });
 
 Service.startService({ route: "test/service", port: "4400", host: "localhost" });
+```
+
+---
+
+# Middleware
+
+SystemLynx supports middleware that runs before or after a module method is called. This is useful for things like authentication, logging, or validating requests.
+
+Use `Service.before` to add a middleware function that runs before any method is invoked, and `Service.after` to run one after the response is ready.
+
+```javascript
+const { Service } = require("systemlynx");
+
+Service.before(function (req, res, next) {
+  console.log("Incoming request:", req.fn);
+  next();
+});
+
+Service.module("Users", Users);
+Service.module("Orders", Orders);
+
+Service.startService({ route: "api", port: 4400, host: "localhost" });
+```
+
+You can also scope middleware to a specific module or method so it only runs where you need it.
+
+```javascript
+// Runs before every method on the Users module
+Service.before("Users", authMiddleware);
+
+// Runs only before Users.delete
+Service.before("Users.delete", requireAdminMiddleware);
+```
+
+See the [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/API.md#tasksjs-api-documentation) for the full middleware API.
+
+---
+
+# Architecture: Monolith to Microservices
+
+One of the core ideas behind SystemLynx is that your module code doesn't change depending on how you deploy it. You can start with everything in a single service and scale it out later — without rewriting anything.
+
+## Start as a monolith
+
+```javascript
+const { Service } = require("systemlynx");
+
+Service.module("Users", Users);
+Service.module("Orders", Orders);
+Service.module("Products", Products);
+
+Service.startService({ route: "api", port: 4400, host: "localhost" });
+```
+
+Your client loads everything from one place:
+
+```javascript
+const { Users, Orders, Products } = await Client.loadService("http://localhost:4400/api");
+```
+
+## Scale out: move modules to their own services
+
+When you're ready to scale, pull any module into its own service. The module code is unchanged — just move it and update the URL the client loads from.
+
+```javascript
+// users-service.js
+Service.module("Users", Users);
+Service.startService({ route: "users", port: 4401, host: "localhost" });
+
+// orders-service.js
+Service.module("Orders", Orders);
+Service.startService({ route: "orders", port: 4402, host: "localhost" });
+```
+
+```javascript
+// client
+const { Users } = await Client.loadService("http://localhost:4401/users");
+const { Orders } = await Client.loadService("http://localhost:4402/orders");
+```
+
+Because every module can be hosted independently, you can scale horizontally (run multiple instances of a service) or vertically (split a busy module into its own service) as your needs grow.
+
+## Load Balancing
+
+The **LoadBalancer** lets you run multiple clones of a service and distribute requests across them. Clones register themselves with the LoadBalancer, which handles routing — your client just talks to the LoadBalancer URL and doesn't need to know how many instances are running behind it.
+
+```javascript
+const { LoadBalancer } = require("systemlynx");
+
+LoadBalancer.startService({ route: "users", port: 4400, host: "localhost" });
+```
+
+Each clone registers on startup:
+
+```javascript
+const { Client } = require("systemlynx");
+
+const { clones } = await Client.loadService("http://localhost:4400/users");
+
+await clones.register({ host: "localhost", port: 4401, route: "/users" });
 ```
