@@ -559,7 +559,8 @@ describe("SystemContext", () => {
           expect(event.type).to.equal("WebSocket");
           resolve();
         });
-        EventTesterModule.sendEvent(eventName);
+        // small delay so "subscribe" WebSocket message is processed before the HTTP call triggers the emit
+        setTimeout(() => EventTesterModule.sendEvent(eventName), 100);
       })
     );
   });
