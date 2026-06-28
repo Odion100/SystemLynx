@@ -252,6 +252,27 @@ function notifyClients(req, res, next) {
 
 ---
 
+### Built-in `"error"` event
+
+SystemLynx emits a local `"error"` event on a module whenever one of its methods sends an error back to the client (a thrown error, a rejected promise, or a middleware error). This is a **server-side, local-only** event — it is *not* broadcast over WebSockets to clients (the failing client already receives the error over HTTP). It lets observers monitor failures that bypass `after` middleware.
+
+| Event | Payload | Description |
+|:---|:---|:---|
+| `"error"` | `{ module_name, fn, arguments, status, message, error }` | Fires when a method on this module returns an error to the client |
+
+```javascript
+Service.module("Orders", function () {
+  this.on("error", (info) => {
+    console.log(`${info.module_name}.${info.fn} failed (${info.status}): ${info.message}`);
+    console.log("called with:", info.arguments);
+  });
+});
+```
+
+A plugin can subscribe across every module via [`App.getModules()`](#appgetmodulename--appgetmodules).
+
+---
+
 ### module.$clearEvent(eventName [, fn])
 
 Removes event listeners. If a function is provided, removes only the listener matching that function's name. If no function is provided, removes all listeners for that event.
@@ -442,6 +463,26 @@ App.config(function (next) {
 App.module("Users", function () {
   const config = this.useConfig();
   this.db = config.dbConnection;
+});
+```
+
+---
+
+### App.getModule(name) / App.getModules()
+
+Return the live module objects hosted on this App. `getModule(name)` returns a single module (or `undefined`); `getModules()` returns an object keyed by module name (`{ [name]: module }`).
+
+Modules are constructed during initialization, so the live references only exist **after** the `"ready"` event. Before that, `getModule` returns `undefined` and `getModules` returns an empty object. Call them inside an `App.on("ready", ...)` handler — this is how a plugin (e.g. a monitoring/observability plugin) gets a handle on modules to observe or decorate them.
+
+```javascript
+App.use((App) => {
+  App.on("ready", () => {
+    Object.entries(App.getModules()).forEach(([name, module]) => {
+      module.on("error", (info) => {
+        console.log(`[${name}] ${info.module_name}.${info.fn} failed:`, info.message);
+      });
+    });
+  });
 });
 ```
 

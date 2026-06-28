@@ -46,7 +46,9 @@ describe("SystemLynx Objects", () => {
         "onLoad",
         "config",
         "server",
-        "WebSocket"
+        "WebSocket",
+        "getModule",
+        "getModules"
       )
       .that.respondsTo("module")
       .that.respondsTo("on")
@@ -58,7 +60,9 @@ describe("SystemLynx Objects", () => {
       .that.respondsTo("startService")
       .that.respondsTo("loadService")
       .that.respondsTo("onLoad")
-      .that.respondsTo("config");
+      .that.respondsTo("config")
+      .that.respondsTo("getModule")
+      .that.respondsTo("getModules");
   });
 
   it("should return a SystemLynx Client", () => {

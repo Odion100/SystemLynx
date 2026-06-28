@@ -43,6 +43,20 @@ module.exports = function createApp(server, WebSocket, customClient) {
     return App;
   };
 
+  // Live module accessors. Modules are constructed during initialization, so the
+  // `module` reference only exists after the "ready" event — before that these
+  // return undefined / an empty list.
+  App.getModule = (name) => {
+    const found = system.modules.find((mod) => mod.name === name);
+    return found ? found.module : undefined;
+  };
+
+  App.getModules = () =>
+    system.modules.reduce((obj, { name, module }) => {
+      if (module) obj[name] = module;
+      return obj;
+    }, {});
+
   App.before = (...args) => {
     system.Service.before(...args);
     return App;

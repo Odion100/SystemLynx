@@ -58,6 +58,18 @@ module.exports = function createRouter(server, config) {
     const sendError = (error) => {
       const status = (error || {}).status || 500;
       const message = (error || {}).message || unhandledMessage;
+      // Emit a local-only "error" event on the module so server-side observers
+      // (e.g. a SystemView plugin) can monitor failures. $emit does not broadcast
+      // over websockets — the failing client already receives the error over HTTP.
+      if (Module && typeof Module.$emit === "function")
+        Module.$emit("error", {
+          module_name,
+          fn,
+          arguments: req.arguments,
+          status,
+          message,
+          error,
+        });
       res.status(status).json({
         ...presets,
         ...error,

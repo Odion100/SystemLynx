@@ -24,9 +24,13 @@ describe("createApp()", () => {
         "onLoad",
         "config",
         "server",
-        "WebSocket"
+        "WebSocket",
+        "getModule",
+        "getModules"
       )
       .that.respondsTo("module")
+      .that.respondsTo("getModule")
+      .that.respondsTo("getModules")
       .that.respondsTo("on")
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
@@ -391,6 +395,66 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
         resolve();
       })
     );
+  });
+
+  it("should expose live modules via App.getModule(name) and App.getModules() after ready", async () => {
+    const App = createApp();
+    const route = "test-service";
+    const port = "8495";
+
+    App.module("mod", function () {
+      this.test = () => {};
+    }).module("mod2", function () {
+      this.test = () => {};
+    });
+
+    // before initialization the live module reference does not exist yet
+    expect(App.getModule("mod")).to.equal(undefined);
+    expect(App.getModules()).to.be.an("object").that.is.empty;
+
+    await new Promise((resolve) => App.startService({ route, port }).on("ready", resolve));
+
+    const mod = App.getModule("mod");
+    expect(mod).to.be.an("object").that.respondsTo("on").that.respondsTo("emit");
+    expect(App.getModule("missing")).to.equal(undefined);
+
+    const modules = App.getModules();
+    expect(modules).to.be.an("object").that.has.all.keys("mod", "mod2");
+    expect(modules.mod).to.respondTo("on").that.respondsTo("emit");
+  });
+
+  it("should emit a local 'error' event on the module when a method throws back to the client", async () => {
+    const App = createApp();
+    const route = "test-service";
+    const port = "8496";
+
+    App.module("errMod", function () {
+      this.boom = () => {
+        throw { status: 400, message: "boom went the method" };
+      };
+    });
+
+    await new Promise((resolve) => App.startService({ route, port }).on("ready", resolve));
+
+    const errMod = App.getModule("errMod");
+    const errorEvent = new Promise((resolve) => errMod.on("error", resolve));
+
+    const url = `http://localhost:${port}/${route}/errMod/boom`;
+    try {
+      await HttpClient.request({ method: "POST", url, body: { __arguments: [{ x: 1 }] } });
+    } catch (e) {
+      // expected — the method throws and the error is returned over HTTP
+    }
+
+    const info = await errorEvent;
+    expect(info)
+      .to.be.an("object")
+      .that.has.all.keys("module_name", "fn", "arguments", "status", "message", "error");
+    expect(info.module_name).to.equal("errMod");
+    expect(info.fn).to.equal("boom");
+    expect(info.status).to.equal(400);
+    expect(info.message).to.equal("boom went the method");
+    expect(info.arguments).to.deep.equal([{ x: 1 }]);
   });
 
   it("should be able to use App.config(constructor) to construct a configuration module", async () => {
