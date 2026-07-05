@@ -114,6 +114,8 @@ module.exports = function createServerManager(customServer) {
       "before",
       "after",
       "$clearEvent",
+      "once",
+      "destroy",
       ...reserved_methods,
     ];
     const methods = parseMethods(Module, exclude_methods, useREST);

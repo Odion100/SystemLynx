@@ -26,11 +26,13 @@ describe("createApp()", () => {
         "server",
         "WebSocket",
         "getModule",
-        "getModules"
+        "getModules",
+        "Modules"
       )
       .that.respondsTo("module")
       .that.respondsTo("getModule")
       .that.respondsTo("getModules")
+      .that.respondsTo("Modules")
       .that.respondsTo("on")
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
@@ -421,6 +423,76 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
     const modules = App.getModules();
     expect(modules).to.be.an("object").that.has.all.keys("mod", "mod2");
     expect(modules.mod).to.respondTo("on").that.respondsTo("emit");
+  });
+
+  it("should expose callable, this-bound module copies via App.Modules()", async () => {
+    const App = createApp();
+    const route = "test-service";
+    const port = "8497";
+
+    App.module("mod", function () {
+      // returns a marker read off `this` — only the live module instance has it
+      this.whoAmI = function () {
+        return this.__isLiveModule;
+      };
+      // reports which internal SystemLynx methods are reachable via `this`
+      this.reachableContext = function () {
+        return {
+          useService: typeof this.useService,
+          useModule: typeof this.useModule,
+          useConfig: typeof this.useConfig,
+          emit: typeof this.emit,
+          $emit: typeof this.$emit,
+          on: typeof this.on,
+          once: typeof this.once,
+          before: typeof this.before,
+          after: typeof this.after,
+        };
+      };
+    });
+
+    await new Promise((resolve) => App.startService({ route, port }).on("ready", resolve));
+
+    const live = App.getModule("mod");
+    const bound = App.Modules();
+    // marker placed on the live instance AFTER the copies are built, so a copy can
+    // only "see" it if its methods are bound to the live module rather than the copy
+    live.__isLiveModule = "live";
+
+    expect(bound).to.be.an("object").that.has.all.keys("mod");
+    // it is a distinct copy, not the raw handle...
+    expect(bound.mod).to.not.equal(live);
+    // ...yet its methods run with `this` === the live module
+    expect(bound.mod.whoAmI()).to.equal("live");
+    // and that holds even when a method is detached from the object (real binding,
+    // not call-site `this`)
+    const { whoAmI } = bound.mod;
+    expect(whoAmI()).to.equal("live");
+
+    // the bound copy exposes the module's built-in SystemLynx methods directly
+    expect(bound.mod)
+      .to.respondTo("useService")
+      .that.respondsTo("useModule")
+      .that.respondsTo("useConfig")
+      .that.respondsTo("emit")
+      .that.respondsTo("$emit")
+      .that.respondsTo("on")
+      .that.respondsTo("once")
+      .that.respondsTo("before")
+      .that.respondsTo("after");
+
+    // ...and every one of them is reachable via `this` inside a locally-called method
+    expect(bound.mod.reachableContext()).to.deep.equal({
+      useService: "function",
+      useModule: "function",
+      useConfig: "function",
+      emit: "function",
+      $emit: "function",
+      on: "function",
+      once: "function",
+      before: "function",
+      after: "function",
+    });
   });
 
   it("should emit a local 'error' event on the module when a method throws back to the client", async () => {

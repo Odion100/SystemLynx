@@ -5,6 +5,17 @@ const initializeApp = require("./components/initializeApp");
 const SystemLynxContext = require("../utils/SystemContext");
 const System = require("../utils/System");
 
+// Return a callable copy of a module whose methods are bound to the live module,
+// so `this` (emit, $emit, useService, useModule, etc.) resolves correctly when the
+// method is invoked locally — even if detached from the object. `this.req`/`this.res`
+// are undefined for local calls, which the method is expected to handle.
+const bindModule = (module) =>
+  Object.keys(module).reduce((bound, key) => {
+    bound[key] =
+      typeof module[key] === "function" ? module[key].bind(module) : module[key];
+    return bound;
+  }, {});
+
 module.exports = function createApp(server, WebSocket, customClient) {
   const system = new System();
   const systemContext = SystemLynxContext(system);
@@ -54,6 +65,14 @@ module.exports = function createApp(server, WebSocket, customClient) {
   App.getModules = () =>
     system.modules.reduce((obj, { name, module }) => {
       if (module) obj[name] = module;
+      return obj;
+    }, {});
+
+  // Callable, `this`-bound copies of every module keyed by name — for invoking
+  // module methods locally. Use getModule/getModules for the raw live handles.
+  App.Modules = () =>
+    system.modules.reduce((obj, { name, module }) => {
+      if (module) obj[name] = bindModule(module);
       return obj;
     }, {});
 

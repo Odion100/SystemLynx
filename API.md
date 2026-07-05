@@ -470,14 +470,30 @@ App.module("Users", function () {
 
 ### App.getModule(name) / App.getModules()
 
-Return the live module objects hosted on this App. `getModule(name)` returns a single module (or `undefined`); `getModules()` returns an object keyed by module name (`{ [name]: module }`).
+Return the **live** module objects hosted on this App — the same instances the server invokes. `getModule(name)` returns a single module (or `undefined`); `getModules()` returns an object keyed by module name (`{ [name]: module }`).
 
-Modules are constructed during initialization, so the live references only exist **after** the `"ready"` event. Before that, `getModule` returns `undefined` and `getModules` returns an empty object. Call them inside an `App.on("ready", ...)` handler — this is how a plugin (e.g. a monitoring/observability plugin) gets a handle on modules to observe or decorate them.
+These are raw handles: mutating one (attaching a listener, adding a property such as `log`) affects the real module, so the change is visible to the method when it runs. This is what a plugin (e.g. a monitoring/observability plugin) uses to **decorate or observe** modules.
+
+Modules are constructed during initialization, so the live references only exist **after** the `"ready"` event. Before that, `getModule` returns `undefined` and `getModules` returns an empty object. Call them inside an `App.on("ready", ...)` handler.
+
+### App.Modules()
+
+Returns an object keyed by module name of **callable, `this`-bound copies** of every module — for invoking module methods locally. Each method is bound to the live module, so inside a call `this` resolves correctly (`this.emit`, `this.$emit`, `this.useService`, `this.useModule`, etc.) even if the method is detached from the object. `this.req`/`this.res` are `undefined` for local calls (there is no HTTP request), which the method should handle.
+
+Use `Modules()` when you want to **call** modules; use `getModule`/`getModules` when you need the raw handle to **mutate** them.
+
+```javascript
+App.on("ready", () => {
+  const { Users } = App.Modules();
+  Users.add({ name: "Ada" }); // `this` bound to the live Users module
+});
+```
 
 ```javascript
 App.use((App) => {
   App.on("ready", () => {
     Object.entries(App.getModules()).forEach(([name, module]) => {
+      // raw handle: mutate/observe the real module
       module.on("error", (info) => {
         console.log(`[${name}] ${info.module_name}.${info.fn} failed:`, info.message);
       });

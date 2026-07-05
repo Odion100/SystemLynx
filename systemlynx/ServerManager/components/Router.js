@@ -17,8 +17,8 @@ module.exports = function createRouter(server, config) {
       (req, res, next) => {
         req.module_name = module_name;
         req.fn = fn;
-        req.Module = Module;
-        req.module = Module;
+        req.Module = { ...Module };
+        req.module = req.Module;
         next();
       },
       parseRequest,
@@ -36,8 +36,8 @@ module.exports = function createRouter(server, config) {
         req.module_name = module_name;
         req.moduleName = module_name;
         req.fn = method;
-        req.Module = Module;
-        req.module = Module;
+        req.Module = { ...Module };
+        req.module = req.Module;
         next();
       },
       parseRequest,

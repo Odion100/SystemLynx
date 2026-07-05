@@ -21,6 +21,20 @@ Find the full [API Documentation](https://github.com/Odion100/SystemLynx/blob/ma
 
 ---
 
+## ⚠️ Version compatibility
+
+Starting with **v2.0.0**, SystemLynx delivers server-to-client WebSocket events using Socket.io **named events and rooms** — each client receives only the events it subscribed to, instead of a shared broadcast channel. This is a **wire-protocol change**, so a service and its clients must be on matching major versions:
+
+| SystemLynx (service) | [`systemlynx-client`](https://www.npmjs.com/package/systemlynx-client) (browser / ESM) |
+| :--- | :--- |
+| `2.x` | `2.x` |
+
+Pairing a v2 service with a v1 client (or vice versa) will connect successfully but **silently deliver no events**. Upgrade both sides together.
+
+This coupling extends across the whole SystemLynx ecosystem: **[SystemView](https://www.npmjs.com/package/systemview)** and its SystemLynx plugin must also be on **v2.x** to work with v2 services and clients. Upgrade the entire stack together.
+
+---
+
 # Quick Start
 
 ## Service.module(name, constructor [,options])

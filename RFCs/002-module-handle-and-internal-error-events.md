@@ -49,7 +49,10 @@ over websockets to every connected client).
 
 Add module accessors. The live module is at `system.modules[i].module` once built.
 
+Three accessors, split by intent — **raw handles for mutation, bound copies for calling**:
+
 ```js
+// Raw live handles — for a plugin to decorate/observe the real module.
 App.getModule = (name) => {
   const found = system.modules.find((m) => m.name === name);
   return found ? found.module : undefined;
@@ -60,13 +63,34 @@ App.getModules = () =>
     if (module) obj[name] = module;
     return obj;
   }, {});
+
+// Callable, `this`-bound copies keyed by name — for invoking methods locally.
+const bindModule = (module) =>
+  Object.keys(module).reduce((bound, key) => {
+    bound[key] =
+      typeof module[key] === "function" ? module[key].bind(module) : module[key];
+    return bound;
+  }, {});
+
+App.Modules = () =>
+  system.modules.reduce((obj, { name, module }) => {
+    if (module) obj[name] = bindModule(module);
+    return obj;
+  }, {});
 ```
 
-`getModules()` returns an object **keyed by module name** (`{ [name]: module }`) —
-consistent with how SystemLynx exposes service modules elsewhere (`useService(name)`
-returns named module keys). `getModule(name)` returns a single live module. Both only
-return live modules after the `ready` event (before that, `module` is undefined). Plugins
-should call these inside an `App.on("ready", ...)` handler.
+- **`getModule(name)` / `getModules()`** return the **raw live module(s)** keyed by name.
+  Mutating one (attaching a listener, assigning `log`) affects the real module the Router
+  invokes — this is what the plugin needs to **decorate** modules.
+- **`Modules()`** returns **callable copies** whose methods are bound to the live module,
+  so `this` (emit/$emit/useService/useModule) resolves correctly on a local call, even if
+  a method is detached. `this.req`/`this.res` are `undefined` locally, which the method
+  handles. Binding a *copy* (not the live methods) is required: a hard-bound method would
+  ignore the Router's per-request `Module[fn].apply({ ...Module, req, res }, args)`, so the
+  live methods must stay unbound for the HTTP path.
+
+All only return live modules after the `ready` event (before that, `module` is undefined).
+Consumers call these inside an `App.on("ready", ...)` handler.
 
 ### 2. `systemlynx/ServerManager/components/Router.js`
 
