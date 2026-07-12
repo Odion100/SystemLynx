@@ -84,7 +84,7 @@ module.exports = function createServerManager(customServer) {
       httpServer.listen(port, () => {
         console.log(`[SystemLynx][Service]: Listening on ${serviceUrl}\n`);
         moduleQueue.forEach(({ name, Module, reserved_methods }) =>
-          ServerManager.addModule(name, Module, reserved_methods)
+          ServerManager.addModule(name, Module, reserved_methods),
         );
         moduleQueue.length = 0;
         resolve(connectionData);
@@ -162,7 +162,7 @@ module.exports = function createServerManager(customServer) {
               method,
               name,
               beforeValidators,
-              afterValidators
+              afterValidators,
             );
         }
       });
@@ -189,7 +189,7 @@ module.exports = function createServerManager(customServer) {
 
     serverConfigurations[type][name].push(async function (req, res, next) {
       try {
-        await middleware(req, res, next);
+        await middleware.apply(req.Module, [req, res, next]);
       } catch (error) {
         res.sendError(error);
       }
