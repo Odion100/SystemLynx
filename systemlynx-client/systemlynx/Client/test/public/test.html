@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>SocketDispatcher Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script type="module">
+      // Assume the SocketDispatcher is already adapted for browser use
+      // You may need to bundle/export it if using native Node modules
+
+      // Mock simple dispatcher for demonstration
+      class SocketDispatcher {
+        constructor({ namespace, socketPath }) {
+          this.socket = io(namespace, {
+            path: socketPath,
+            // transports: ["websocket", "polling"],
+          });
+          this.handlers = {};
+
+          this.socket.on("connect", () => {
+            console.log("✅ Connected");
+            if (this.handlers.connect) this.handlers.connect();
+          });
+
+          this.socket.on("dispatch", (event) => {
+            const { name, data } = event;
+            if (this.handlers[name]) this.handlers[name](data);
+          });
+        }
+
+        on(event, handler) {
+          this.handlers[event] = handler;
+        }
+
+        emit(event, data) {
+          this.socket.emit("dispatch", { name: event, data });
+        }
+      }
+
+      const port = 2592;
+      const socketPath = "/test-namespace";
+      const route = "/events";
+      const namespace = `ws://localhost:${port}${route}`;
+
+      const dispatcher = new SocketDispatcher({ namespace, socketPath });
+
+      dispatcher.on("connect", () => {
+        console.log("Connected to dispatcher");
+      });
+
+      dispatcher.on("test-event", (data) => {
+        console.log("🎉 Received event:", data);
+      });
+    </script>
+  </head>
+  <body>
+    <h1>SocketDispatcher Browser Test</h1>
+    <p>Open the console to see logs.</p>
+  </body>
+</html>

@@ -1,14 +1,25 @@
 {
   "name": "systemlynx",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "description": "",
   "main": "index.js",
   "browser": {
     "./index.js": "./client.js"
   },
+  "files": [
+    "index.js",
+    "client.js",
+    "systemlynx",
+    "API.md",
+    "LOADBALANCER.md",
+    "logo.png"
+  ],
   "scripts": {
     "start": "node index.js",
-    "test": "jest --verbose"
+    "test": "jest --verbose && npm run test:client",
+    "test:client": "node systemlynx-client/systemlynx/Client/test/integration.test.mjs",
+    "publish:lib": "npm publish",
+    "publish:client": "npm publish ./systemlynx-client"
   },
   "dependencies": {
     "axios": "^1.5.0",

@@ -42,6 +42,24 @@ const spawnClones = async (route, moduleName, def, ports) => {
 
 const connected = (service) => new Promise((resolve) => service.on("connect", resolve));
 
+// A few tests below intentionally kill clones or down the whole cluster; the LoadBalancer and
+// client correctly LOG those failures. `muteLogs()` opts a test into silencing those expected
+// warn/error lines so a green suite doesn't print red noise — assertions still run. The
+// afterEach restores console even if the test throws.
+let restoreConsole = null;
+const muteLogs = () => {
+  const { warn, error } = console;
+  restoreConsole = () => {
+    console.warn = warn;
+    console.error = error;
+    restoreConsole = null;
+  };
+  console.warn = console.error = () => {};
+};
+afterEach(() => {
+  if (restoreConsole) restoreConsole();
+});
+
 describe("LoadBalancer()", () => {
   it("should return a SystemLynx LoadBalancer with a `Clones` module", () => {
     expect(LoadBalancer)
@@ -216,7 +234,7 @@ describe("this.clone — delegate & elect under real conditions (real clones)", 
         return this.clone.resign({ role: "sched2", holderId: this.req.headers.host });
       };
     };
-    const clones = await spawnCloneApps("sched2-svc", "Scheduler", Scheduler, [5555, 5556, 5557]);
+    const clones = await spawnCloneApps("sched2-svc", "Scheduler", Scheduler, [5565, 5566, 5567]);
 
     const elected = await Promise.all(clones.map((c) => call(c.url, "Scheduler", "lead")));
     expect(elected.filter((r) => r.leader)).to.have.lengthOf(1); // exactly one leader
@@ -251,6 +269,7 @@ describe("this.clone — delegate & elect under real conditions (real clones)", 
 
 describe("LoadBalancer.Tentacle — discovery robustness (loops & failover)", () => {
   it("should evict a dead clone and serve a live one — real failover, no loop", async () => {
+    muteLogs(); // intentionally routes to a dead clone; the LB correctly warns on eviction
     const r = "failover-svc";
     const live = createService();
     live.module("Ping", { ping: () => ({ ok: true }) });
@@ -267,6 +286,7 @@ describe("LoadBalancer.Tentacle — discovery robustness (loops & failover)", ()
   });
 
   it("should 404 gracefully when every clone is dead — terminates, never loops", async () => {
+    muteLogs(); // every clone is dead by design; the LB correctly warns as it evicts each
     const r = "all-dead-svc";
     const s = createService();
     await s.startService({ route: r, port: 5412 });
@@ -366,6 +386,7 @@ describe("LoadBalancer — transparent failover (reconnect through the LB)", () 
   });
 
   it("switches clones mid-call: a method works, its clone dies, the next call is seamlessly served by another", async () => {
+    muteLogs(); // one clone dies mid-call by design; the LB correctly warns on eviction
     const r = "resilient";
     const clone = (port) => ({
       whoami: () => ({ servedBy: port }),
@@ -442,6 +463,7 @@ describe("LoadBalancer — transparent failover (reconnect through the LB)", () 
   });
 
   it("rejects (does not hang) when the whole cluster is down", async () => {
+    muteLogs(); // the whole cluster is downed by design; client + LB correctly log the failure
     const r = "doomed";
     const only = createService();
     only.module("Api", { ping: () => ({ ok: true }) });

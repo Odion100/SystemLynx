@@ -1,4 +1,4 @@
-module.exports = function loadConnectionData(
+export default function loadConnectionData(
   httpClient,
   url,
   { limit = 3, wait = 1000 } = {}
@@ -27,4 +27,4 @@ module.exports = function loadConnectionData(
       }
     }
   });
-};
+}
