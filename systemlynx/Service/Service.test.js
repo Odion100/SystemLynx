@@ -13,7 +13,8 @@ describe("createService", () => {
         "server",
         "WebSocket",
         "before",
-        "after"
+        "after",
+        "close"
       )
       .that.respondsTo("startService")
       .that.respondsTo("module")

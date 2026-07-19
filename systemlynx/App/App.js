@@ -37,6 +37,7 @@ module.exports = function createApp(server, WebSocket, customClient) {
   system.Service = createService(server, WebSocket, systemContext);
   App.server = system.Service.server;
   App.WebSocket = system.Service.WebSocket;
+  App.close = (...args) => system.Service.close(...args);
 
   App.startService = (options) => {
     system.routing = options;

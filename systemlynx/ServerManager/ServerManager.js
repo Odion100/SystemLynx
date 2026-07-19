@@ -31,6 +31,16 @@ module.exports = function createServerManager(customServer) {
 
   const ServerManager = { server };
 
+  // Stop listening — frees the port and makes the service unreachable (graceful shutdown /
+  // simulating a clone going down). No-op before startService.
+  ServerManager.close = (cb = () => {}) => {
+    // Closing the Socket.IO server disconnects clients and closes the underlying HTTP server.
+    // (A plain httpServer.close() would hang forever waiting on the upgraded websocket.)
+    if (ServerManager.WebSocket) return ServerManager.WebSocket.close(cb);
+    if (ServerManager.httpServer) return ServerManager.httpServer.close(cb);
+    cb();
+  };
+
   ServerManager.startService = (options) => {
     let { route, host = "localhost", port, ssl, protocol } = options;
 
@@ -41,6 +51,7 @@ module.exports = function createServerManager(customServer) {
     const serviceUrl = `${protocol}://${host}:${port}/${route}`;
 
     const httpServer = ssl ? https.createServer(ssl, server) : http.createServer(server);
+    ServerManager.httpServer = httpServer;
     const socketPath = `/${route}/socket.io`;
 
     const WebSocket = socketIO(httpServer, {
@@ -51,6 +62,7 @@ module.exports = function createServerManager(customServer) {
       },
     });
 
+    ServerManager.WebSocket = WebSocket;
     SocketEmitter.apply(ServerManager, [route, WebSocket]);
 
     const wsProtocol = protocol === "https" ? "wss" : "ws";

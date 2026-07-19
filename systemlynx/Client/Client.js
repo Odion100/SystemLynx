@@ -55,6 +55,8 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
         console.error(
           `[SystemLynx][Client]: Failed to reconnect service @${connData.serviceUrl}`
         );
+        // surface the failure so callers reject instead of hanging on an unfulfilled retry
+        if (typeof cb === "function") cb(error);
       }
     };
 

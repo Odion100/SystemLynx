@@ -126,6 +126,9 @@ module.exports = function createRouter(server, config) {
           (returnValue || {}).message ||
           `[SystemLynx][response]: ${module_name}.${fn}(...) returned successfully`,
         returnValue,
+        // marker so a client can tell a genuine SystemLynx response from a stranger on the
+        // port (a stale server / proxy) and reconnect if it's missing
+        SystemLynxService: true,
       });
     } else {
       const unhandledMessage = `[SystemLynx]: handled error While calling ${module_name}.${fn}(...)`;

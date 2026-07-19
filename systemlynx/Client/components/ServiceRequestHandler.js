@@ -51,6 +51,13 @@ module.exports = function ServiceRequestHandler(
       const { route, port, host } = this.__connectionData();
       const { foundFile, fileType } = extractFilesFromArguments(__arguments);
 
+      // A 2xx that isn't a genuine SystemLynx response means a stranger answered on the
+      // port (stale server / proxy) — treat it like a transport failure and reconnect.
+      const onResults = (results) =>
+        results && results.SystemLynxService
+          ? cb(null, results)
+          : ErrorHandler({ message: "non-SystemLynx response on this connection" }, errCount, cb);
+
       const defaultURL = `${protocol}${host}:${port}${route}/${fn}`;
       const url =
         fileType === "file"
@@ -72,7 +79,7 @@ module.exports = function ServiceRequestHandler(
             body: { __arguments },
             headers,
           })
-          .then((results) => cb(null, results))
+          .then(onResults)
           .catch((err) => ErrorHandler(err, errCount, cb));
       } else {
         const formData = { __arguments };
@@ -88,7 +95,7 @@ module.exports = function ServiceRequestHandler(
             formData,
             headers,
           })
-          .then((results) => cb(null, results))
+          .then(onResults)
           .catch((err) => ErrorHandler(err, errCount, cb));
       }
     };
@@ -98,11 +105,15 @@ module.exports = function ServiceRequestHandler(
         cb(err);
       } else if (errCount <= 3) {
         errCount++;
-        if (reconnectModule) reconnectModule(() => tryRequest(cb, errCount));
-        else Service.resetConnection(() => tryRequest(cb, errCount));
+        // Reconnect, then retry — but if reconnect itself fails, reject rather than hang.
+        const afterReconnect = (reconnectErr) =>
+          reconnectErr ? cb(reconnectErr) : tryRequest(cb, errCount);
+        if (reconnectModule) reconnectModule(afterReconnect);
+        else Service.resetConnection(afterReconnect);
       } else {
+        // retries exhausted — reject the original call instead of hanging forever
         console.error(`[SystemLynx][ServiceRequestHandler][Error]: ${err.message}\n`);
-        console.error(err);
+        cb(err);
       }
     };
 

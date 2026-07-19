@@ -14,6 +14,7 @@ describe("createServerManager function", () => {
         "addBeforware",
         "addAfterware",
         "server",
+        "close",
       ])
       .that.respondsTo("startService")
       .that.respondsTo("addModule")
@@ -163,6 +164,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       },
       serviceUrl: "http://localhost:8372/testAPI",
       status: 200,
+      SystemLynxService: true,
     });
   });
 
@@ -201,6 +203,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       module_name: "testObject",
       serviceUrl: "http://localhost:2233/testAPI",
       status: 200,
+      SystemLynxService: true,
     });
   });
 
@@ -267,6 +270,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       module_name: "testObject",
       serviceUrl: "http://localhost:5454/testAPI",
       status: 200,
+      SystemLynxService: true,
     });
 
     const result2 = await new Promise((resolve) => {
@@ -289,6 +293,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       module_name: "testObject",
       serviceUrl: "http://localhost:5454/testAPI",
       status: 200,
+      SystemLynxService: true,
     });
 
     const result3 = await new Promise((resolve) => {
@@ -374,6 +379,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       module_name: "testObject",
       serviceUrl: "http://localhost:5455/testAPI",
       status: 200,
+      SystemLynxService: true,
     });
 
     const result2 = await new Promise((resolve) => {
@@ -396,6 +402,7 @@ describe("ServerManager.startService(ServerConfiguration)", () => {
       module_name: "testObject",
       serviceUrl: "http://localhost:5455/testAPI",
       status: 200,
+      SystemLynxService: true,
     });
 
     const result3 = await new Promise((resolve) => {

@@ -27,7 +27,8 @@ describe("createApp()", () => {
         "WebSocket",
         "getModule",
         "getModules",
-        "Modules"
+        "Modules",
+        "close"
       )
       .that.respondsTo("module")
       .that.respondsTo("getModule")

@@ -317,6 +317,8 @@ Same as `module.before` but runs after the method returns.
 
 Middleware functions follow the Express convention: `(req, res, next) => {}`. They can be async.
 
+The `this` value inside middleware is the module instance — the same context as inside module methods. This gives middleware access to `this.emit`, `this.useModule`, `this.useService`, and any other properties on the module.
+
 SystemLynx adds the following properties to the request and response objects.
 
 ### Request properties
@@ -734,60 +736,84 @@ Returns the current module-level headers object.
 
 ## LoadBalancer
 
-`LoadBalancer` distributes requests across multiple clones of a Service. Clients connect to the LoadBalancer URL — the LoadBalancer handles routing transparently.
+`LoadBalancer` turns many identical instances of your services into one cluster: service
+discovery, connect-time load balancing (sticky — clients connect once), and cluster delegation
+(`delegate` / `broadcast` / `elect`). See [LOADBALANCER.md](./LOADBALANCER.md) for the full guide.
 
 ```javascript
 const { LoadBalancer } = require("systemlynx");
 ```
 
+Two halves: **`LoadBalancer.clone(...)`** is the plugin a service installs (local); it routes
+to **`LoadBalancer.Tentacle`**, the central module (remote) that does the work.
+
 ---
 
 ### LoadBalancer.startService(options)
 
-Same options as [`Service.startService`](#servicestartserviceoptions). Starts the LoadBalancer as a Service.
+Same options as [`Service.startService`](#servicestartserviceoptions). Starts the LoadBalancer
+as a Service whose only module is `Tentacle`.
 
 ```javascript
-await LoadBalancer.startService({ route: "api/users", port: 4400 });
+await LoadBalancer.startService({ route: "loadbalancer", port: 4000 });
 ```
 
 ---
 
-### LoadBalancer.clones
+### LoadBalancer.clone(options)
 
-The `clones` module manages clone registration and routing. It is itself a `ServerModule`, so clients can call its methods remotely.
+Returns a plugin that a service installs with `App.use(...)` to join the cluster. It connects
+to the LoadBalancer, auto-registers this service, installs `this.clone` on every module (and
+`App.clone` as a capturable handle), and reports load. Options is an open object:
+
+| Option | Default | Description |
+|:---|:---|:---|
+| `url` | *(required)* | The LoadBalancer to connect to |
+| `namespace` | `"clone"` | The per-module handle name; **throws** if a module already defines it |
+| `serviceId` | route | Names this service in the cluster (SystemView convention) |
+| `reportInterval` | `10000` | How often (ms) to push load + heartbeat |
+
+```javascript
+App.startService({ route: "orders", port: 4100 })
+  .module("Orders", Orders)
+  .use(LoadBalancer.clone({ url: "http://localhost:4000/loadbalancer" }));
+```
 
 ---
 
-#### clones.register(options, callback)
+### this.clone / App.clone
 
-Registers a new clone of a service with the LoadBalancer. Once registered, the LoadBalancer will route requests to it using round-robin.
+The handle installed by the plugin. `this.clone` inside any module method; `App.clone` for
+background/event code where there is no `this`. Each call proxies to the remote `Tentacle`.
+
+| Method | Semantics |
+|:---|:---|
+| `clone.delegate(key)` | Exactly one clone proceeds (at-most-once). Returns `{ delegated }` |
+| `clone.broadcast(key, data)` | Fan an action to every clone |
+| `clone.on(key, handler)` | Receive a broadcast (subscribe once the handle is wired, e.g. in `App.on("clone_ready", ...)`) |
+| `clone.elect({ role, holderId })` | One clone holds a role over time; re-elect to renew. Returns `{ leader }` |
+| `clone.resign({ role, holderId })` | Step down cleanly so another clone takes over now |
 
 ```javascript
-const { clones } = await Client.loadService("http://localhost:4400/api/users");
-
-clones.register({ host: "localhost", port: 4401, route: "/api/users" }, (err, result) => {
-  if (err) console.error("Registration failed:", err);
-  else console.log("Clone registered:", result);
+Orders.on("order_paid", async function (order) {
+  const { delegated } = await this.clone.delegate(`receipt:${order.id}`);
+  if (delegated) sendReceiptEmail(order);
 });
 ```
 
-| Option | Type | Required | Description |
-|:---|:---|:---:|:---|
-| `host` | string | ✓ | Hostname of the clone |
-| `port` | number | ✓ | Port the clone is running on |
-| `route` | string | ✓ | Route of the clone service |
-
 ---
 
-#### clones.dispatch(event, callback)
+### LoadBalancer.Tentacle
 
-Dispatches a named event to all registered clones.
+The central module. Clones reach it through `this.clone`; you rarely call it directly.
 
----
+- `Tentacle.register({ url, name })` — URL-first registration (the fetch is a liveness check)
+- `Tentacle.directory(only)` — a keyed bundle of `connectionData` for many services at once
+- `Tentacle.delegate / broadcast / elect / resign` — the coordination primitives above
+- `Tentacle.report({ location, load })` / `heartbeat({ location })` — pushed by clone tentacles
 
-#### clones.assignDispatch(event, callback)
-
-Assigns handling of an event to a single clone, preventing duplicate handling across instances.
+Routing config: `Tentacle.policy` (`"round-robin"` default, or `"least-load"`) and
+`Tentacle.heartbeatTTL` (default `30000` ms, `0` disables staleness eviction).
 
 ---
 

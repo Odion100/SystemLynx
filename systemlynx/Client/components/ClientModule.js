@@ -25,18 +25,10 @@ module.exports = function SystemLynxClientModule(
   };
   ClientModule.__setConnection({ host, port, route, namespace, socketPath });
 
-  const reconnectModule = async (cb) => {
-    try {
-      const url = connectionData.serviceUrl + `?modules=${name}`;
-      const { modules, port, host, socketPath } = await loadConnectionData(url);
-      const { route, namespace } = modules[0];
-      ClientModule.__setConnection({ host, port, route, namespace, socketPath });
-
-      if (typeof cb === "function") cb();
-    } catch (error) {
-      console.error(`[SystemLynx][ClientModule]: Failed to reconnect service @${url}`);
-    }
-  };
+  // On a transport failure, reconnect at the *service* level via Service.resetConnection:
+  // it re-fetches connectionData from serviceUrl (the LoadBalancer route when loaded through
+  // an LB — so a dead clone fails over to a live one), re-points every module, and retries.
+  // (The old per-module reconnect referenced an unimported loadConnectionData and hung.)
   const protocol = getProtocol(serviceUrl);
   methods.forEach(({ method, fn }) => {
     ClientModule[fn] = ServiceRequestHandler.apply(ClientModule, [
@@ -45,7 +37,7 @@ module.exports = function SystemLynxClientModule(
       method,
       fn,
       Service,
-      connectionData && reconnectModule,
+      null,
     ]);
   });
 

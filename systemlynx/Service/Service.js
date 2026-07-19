@@ -15,6 +15,7 @@ module.exports = function createService(
     WebSocket,
     before: addBeforware,
     after: addAfterware,
+    close: (...args) => ServerManager.close(...args),
   };
 
   Service.module = function (name, constructor, reserved_methods = []) {

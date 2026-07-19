@@ -271,22 +271,37 @@ const { Orders } = await Client.loadService("http://localhost:4402/orders");
 
 Because every module can be hosted independently, you can scale horizontally (run multiple instances of a service) or vertically (split a busy module into its own service) as your needs grow.
 
-## Load Balancing
+## Load Balancing & Clustering
 
-The **LoadBalancer** lets you run multiple clones of a service and distribute requests across them. Clones register themselves with the LoadBalancer, which handles routing — your client just talks to the LoadBalancer URL and doesn't need to know how many instances are running behind it.
+The **LoadBalancer** turns many identical instances of your services into one cluster —
+service discovery, connect-time load balancing, and cluster coordination
+(`delegate` / `broadcast` / `elect`). See **[LOADBALANCER.md](./LOADBALANCER.md)** for the full guide.
+
+Run a LoadBalancer:
 
 ```javascript
 const { LoadBalancer } = require("systemlynx");
 
-LoadBalancer.startService({ route: "users", port: 4400, host: "localhost" });
+LoadBalancer.startService({ route: "loadbalancer", port: 4000 });
 ```
 
-Each clone registers on startup:
+A service joins the cluster with the `clone` plugin — it auto-registers and installs
+`this.clone` on every module:
 
 ```javascript
-const { Client } = require("systemlynx");
+const { App, LoadBalancer } = require("systemlynx");
 
-const { clones } = await Client.loadService("http://localhost:4400/users");
+App.startService({ route: "orders", port: 4100 })
+  .module("Orders", Orders)
+  .use(LoadBalancer.clone({ url: "http://localhost:4000/loadbalancer" }));
+```
 
-await clones.register({ host: "localhost", port: 4401, route: "/users" });
+Now any module can coordinate across the cluster — e.g. run a task exactly once, no matter how
+many clones are live:
+
+```javascript
+Orders.on("order_paid", async function (order) {
+  const { delegated } = await this.clone.delegate(`receipt:${order.id}`);
+  if (delegated) sendReceiptEmail(order); // one clone does it, not all of them
+});
 ```

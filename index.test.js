@@ -49,7 +49,8 @@ describe("SystemLynx Objects", () => {
         "WebSocket",
         "getModule",
         "getModules",
-        "Modules"
+        "Modules",
+        "close"
       )
       .that.respondsTo("module")
       .that.respondsTo("on")
@@ -89,39 +90,31 @@ describe("SystemLynx Objects", () => {
         "startService",
         "server",
         "WebSocket",
-        "clones",
+        "Tentacle",
+        "clone",
         "module",
         "before",
-        "after"
+        "after",
+        "close"
       )
       .that.respondsTo("startService")
       .that.respondsTo("module")
       .that.respondsTo("before")
       .that.respondsTo("after");
-    expect(LoadBalancer.clones)
+    expect(LoadBalancer.clone).to.be.a("function");
+    expect(LoadBalancer.Tentacle)
       .to.be.an("object")
-      .that.has.all.keys(
-        "before",
-        "after",
-        "on",
-        "once",
-        "emit",
-        "$clearEvent",
-        "destroy",
-        "clones",
-        "register",
-        "dispatch",
-        "assignDispatch"
-      )
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
       .that.respondsTo("on")
       .that.respondsTo("before")
       .that.respondsTo("after")
       .that.respondsTo("register")
-      .that.respondsTo("dispatch")
-      .that.respondsTo("assignDispatch")
-      .that.has.property("clones")
+      .that.respondsTo("directory")
+      .that.respondsTo("delegate")
+      .that.respondsTo("broadcast")
+      .that.respondsTo("elect")
+      .that.has.property("services")
       .that.is.an("array");
   });
 
@@ -134,6 +127,7 @@ describe("SystemLynx Objects", () => {
         "addBeforware",
         "addAfterware",
         "server",
+        "close",
       ])
       .that.respondsTo("startService")
       .that.respondsTo("addModule")
