@@ -29,4 +29,33 @@ describe("SocketEmiiter", () => {
       emmiter.emit(eventName, { testPassed: true });
     }, 500);
   });
+
+  it("contains a bad (circular) payload — logs it, surfaces a local error, never crashes", () => {
+    const emitter = SocketEmiiter("circular-ns", WebSocket);
+    const circular = { a: 1 };
+    circular.self = circular; // circular reference → socket.io's synchronous encode throws
+
+    let localReceived = false;
+    let surfacedError = null;
+    emitter.on("boom", () => (localReceived = true));
+    emitter.on("error", (info) => (surfacedError = info));
+
+    // capture the stderr line so the suite stays clean while we assert it actually happened
+    const realError = console.error;
+    let logged = null;
+    console.error = (msg) => (logged = msg);
+    try {
+      // the guard must contain the throw — emit never unwinds out to the caller/process
+      expect(() => emitter.emit("boom", circular)).to.not.throw();
+    } finally {
+      console.error = realError;
+    }
+
+    // a human sees it by default — the log is the baseline signal, not the local event
+    expect(logged).to.be.a("string").that.includes("boom");
+    // local listeners still fire regardless of the wire-encode failure
+    expect(localReceived).to.equal(true);
+    // and a programmatic observer is also notified
+    expect(surfacedError).to.be.an("object").that.has.property("event", "boom");
+  });
 });

@@ -62,13 +62,22 @@ module.exports = function Tentacle(server) {
       service.locations = service.locations.filter((loc) => !stale.has(loc));
     }
     if (!service.locations.length) return null;
-    if (Tentacle.policy === "least-load")
-      return service.locations.reduce((best, loc) =>
-        ((Tentacle.loads.get(loc) || {}).load || 0) < ((Tentacle.loads.get(best) || {}).load || 0)
-          ? loc
-          : best
-      );
-    return nextLocation(service); // round-robin (default)
+    const location =
+      Tentacle.policy === "least-load"
+        ? service.locations.reduce((best, loc) =>
+            ((Tentacle.loads.get(loc) || {}).load || 0) <
+            ((Tentacle.loads.get(best) || {}).load || 0)
+              ? loc
+              : best
+          )
+        : nextLocation(service); // round-robin (default)
+    // Local-only observability: which clone got this connection, under which policy — so a
+    // co-loaded observer (e.g. a SystemView plugin inside the LB) can watch balance fairness via
+    // App.getModule("Tentacle").on("route_assigned", …). $emit, not emit: cluster telemetry stays
+    // in-process and is never socket-broadcast to connected clients.
+    if (typeof Tentacle.$emit === "function")
+      Tentacle.$emit("route_assigned", { route: service.route, location, policy: Tentacle.policy });
+    return location;
   };
 
   // --- discovery: pick a live location per policy, evicting dead ones safely (terminates) ---
@@ -222,4 +231,27 @@ module.exports = function Tentacle(server) {
     Tentacle.loads.set(location, entry);
     return { ok: true };
   };
+
+  // --- observability: a stable, read-only snapshot of cluster state. External observers (e.g. a
+  // SystemView plugin loaded inside the LB) read THIS contract instead of internal fields, so a
+  // future rewrite can rename internals without breaking them. Returns copies — mutating the
+  // snapshot never touches live state. ---
+  Tentacle.getClusterState = () => ({
+    policy: Tentacle.policy,
+    services: Tentacle.services.map((s) => ({
+      route: s.route,
+      name: s.name,
+      locations: s.locations.slice(),
+    })),
+    loads: Array.from(Tentacle.loads.entries()).map(([location, { load, seen }]) => ({
+      location,
+      load,
+      seen,
+    })),
+    ttls: {
+      delegate: Tentacle.delegateTTL,
+      lease: Tentacle.leaseTTL,
+      heartbeat: Tentacle.heartbeatTTL,
+    },
+  });
 };

@@ -371,6 +371,45 @@ describe("LoadBalancer.Tentacle — intelligent routing & health", () => {
   });
 });
 
+describe("LoadBalancer.Tentacle — observability (SystemView hooks)", () => {
+  it("emits a local route_assigned event naming the chosen clone + policy on each routing decision", async () => {
+    const r = "obs-route";
+    const s = createService();
+    s.module("Api", { ping: () => ({ ok: true }) });
+    await s.startService({ route: r, port: 5571 });
+    const location = `http://localhost:5571/${r}`;
+    await LoadBalancer.Tentacle.register({ url: location });
+
+    // a co-loaded observer (e.g. a SystemView plugin inside the LB) subscribes exactly like this
+    const assigned = new Promise((resolve) =>
+      LoadBalancer.Tentacle.on("route_assigned", (evt) => {
+        if (evt.route === `/${r}`) resolve(evt);
+      })
+    );
+    await HttpClient.request({ url: `http://localhost:${lbPort}/${r}` }); // a discovery = a routing decision
+    const evt = await assigned;
+
+    expect(evt).to.have.property("location", location); // which clone got the connection
+    expect(evt).to.have.property("policy"); // under which policy the choice was made
+  });
+
+  it("getClusterState() returns a stable, read-only snapshot — over RPC (real usage) and in-process", async () => {
+    // real usage: a client loads the LoadBalancer and calls Tentacle.getClusterState() over the wire
+    const lb = await createClient().loadService(lbUrl);
+    const state = await lb.Tentacle.getClusterState();
+    expect(state).to.have.all.keys("policy", "services", "loads", "ttls");
+    expect(state.services).to.be.an("array");
+    expect(state.loads).to.be.an("array");
+    expect(state.ttls).to.have.all.keys("delegate", "lease", "heartbeat");
+
+    // in-process (the co-loaded-plugin path): the snapshot is a copy — mutating it never touches live state
+    const snapshot = LoadBalancer.Tentacle.getClusterState();
+    const liveCount = LoadBalancer.Tentacle.services.length;
+    snapshot.services.push({ route: "/injected" });
+    expect(LoadBalancer.Tentacle.services).to.have.lengthOf(liveCount);
+  });
+});
+
 describe("LoadBalancer — transparent failover (reconnect through the LB)", () => {
   it("returns connectionData whose serviceUrl points back through the LoadBalancer", async () => {
     const r = "reconnect-svc";
