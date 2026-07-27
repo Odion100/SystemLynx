@@ -100,6 +100,60 @@ async function main() {
     assert.ok(Array.isArray(connData.modules));
   });
 
+  // --- RFC 005: client-side before/after middleware (Hooker) around an outbound call ---
+  await test("client middleware: before sets a header + modifies payload, after sees the result", async () => {
+    const S = createService();
+    S.module("Hooked", function () {
+      this.echo = function (data) {
+        return { got: data, trace: this.req.headers["x-trace"] || null };
+      };
+    });
+    await S.startService({ route: "hooked", port: 8731 });
+
+    const svc = await createClient().loadService("http://localhost:8731/hooked");
+    let afterSaw = null;
+    svc.Hooked.before("echo", function (payload, next) {
+      this.setHeaders({ "x-trace": "T-1" }); // `this` is the module — setHeaders composed on it
+      payload[0].tagged = true; // modify the outgoing payload
+      next();
+    });
+    svc.Hooked.after("echo", function (result, next) {
+      afterSaw = result;
+      next();
+    });
+
+    const res = await svc.Hooked.echo({ n: 1 });
+    assert.deepEqual(res.got, { n: 1, tagged: true }); // payload change reached the server
+    assert.equal(res.trace, "T-1"); // header set by the before hook reached the server
+    assert.ok(afterSaw && afterSaw.trace === "T-1"); // after hook saw the response
+
+    if (svc.disconnect) svc.disconnect();
+    await new Promise((r) => S.close(r));
+  });
+
+  await test("client middleware: an ARRAY of methods at the module level fires for each", async () => {
+    const S = createService();
+    S.module("Multi", function () {
+      this.a = () => ({ ok: "a" });
+      this.b = () => ({ ok: "b" });
+    });
+    await S.startService({ route: "multi", port: 8732 });
+
+    const svc = await createClient().loadService("http://localhost:8732/multi");
+    const hits = [];
+    svc.Multi.before(["a", "b"], function (p, next) {
+      hits.push("hit");
+      next();
+    });
+
+    await svc.Multi.a();
+    await svc.Multi.b();
+    assert.deepEqual(hits, ["hit", "hit"]);
+
+    if (svc.disconnect) svc.disconnect();
+    await new Promise((r) => S.close(r));
+  });
+
   // --- teardown so the script exits cleanly ---
   if (service.disconnect) service.disconnect();
   await new Promise((resolve) => Service.close(resolve));

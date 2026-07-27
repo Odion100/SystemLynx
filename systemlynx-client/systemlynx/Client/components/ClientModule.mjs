@@ -2,6 +2,7 @@
 import headerSetter from "./HeaderSetter.mjs";
 import ServiceRequestHandler from "./ServiceRequestHandler.mjs";
 import SocketDispatcher from "./SocketDispatcher.mjs";
+import Hooker from "../../../utils/Hooker.mjs";
 
 const getProtocol = (url) => url.match(/^(\w+):\/\//)[0];
 
@@ -10,10 +11,23 @@ export default function SystemLynxClientModule(
   { methods, namespace, route, connectionData, name },
   { port, host, serviceUrl, socketPath },
   Service,
-  systemContext
+  systemContext,
+  { client, service } = {}
 ) {
   const events = {};
   const ClientModule = headerSetter.apply({});
+
+  // RFC 005: the module is a hooks-haver. `__middlewareStores` carries the client / service-instance
+  // / module stores so the request handler can gather the full before/after chain off `this`.
+  // Internals non-enumerable so the module's public shape is unchanged.
+  Hooker.apply(ClientModule);
+  Object.defineProperties(ClientModule, {
+    __name: { value: name },
+    __middlewareStores: {
+      value: { namespaced: [client, service], scoped: [ClientModule.__middleware] },
+    },
+    __isClientModule: { value: true },
+  });
 
   ClientModule.__setConnection = ({ host, port, route, namespace, socketPath }) => {
     ClientModule.__connectionData = () => ({ route, host, port });

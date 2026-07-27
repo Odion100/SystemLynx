@@ -23,7 +23,12 @@ module.exports = function createDispatcher(_, systemContext) {
     if (registry.has(key)) registry.delete(key);
 
     let fn = typeof interval === "number" ? throttle(callback, limit, interval) : callback;
-    if (systemContext) fn = fn.bind(systemContext);
+    // RFC 007: bind the handler to the module (so `this` is the module — consistent with methods
+    // and middleware) when this dispatcher IS a module; fall back to systemContext otherwise (e.g.
+    // the App dispatcher, which relies on systemContext for useModule/useService).
+    const bindTarget =
+      Dispatcher && typeof Dispatcher.useService === "function" ? Dispatcher : systemContext;
+    if (bindTarget) fn = fn.bind(bindTarget);
     registry.set(key, fn);
 
     return function () {
@@ -44,11 +49,14 @@ module.exports = function createDispatcher(_, systemContext) {
 
     const throttled =
       typeof interval === "number" ? throttle(callback, limit, interval) : callback;
+    // RFC 007: same rule as `.on` — `this` is the module when this dispatcher is one.
+    const bindTarget =
+      Dispatcher && typeof Dispatcher.useService === "function" ? Dispatcher : systemContext;
 
     const boundFn = function (...args) {
       registry.delete(key);
       if (registry.size === 0) events.delete(eventName);
-      return throttled.apply(systemContext, args);
+      return throttled.apply(bindTarget, args);
     };
 
     registry.set(key, boundFn);

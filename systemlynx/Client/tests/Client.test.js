@@ -34,7 +34,7 @@ describe("Client", () => {
           arg3,
         });
       },
-      ["action3"]
+      ["action3"],
     );
 
     await Service.startService({ route, port });
@@ -53,7 +53,7 @@ describe("Client", () => {
         "disconnect",
         "headers",
         "setHeaders",
-        "orders"
+        "orders",
       )
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
@@ -79,7 +79,7 @@ describe("Client", () => {
         "action1",
         "action2",
         "multiArgTest",
-        "noArgTest"
+        "noArgTest",
       )
       .that.respondsTo("emit")
       .that.respondsTo("$clearEvent")
@@ -343,7 +343,7 @@ describe("Service", () => {
       .that.has.all.keys("files", "message", "param1");
     expect(extraParamResponse.message).to.be.an("string");
     expect(extraParamResponse.message).to.equal(
-      "other params file upload test confirmation"
+      "other params file upload test confirmation",
     );
     expect(extraParamResponse.param1).to.be.an("string");
     expect(extraParamResponse.param1).to.equal("OtherParamsTest");
@@ -384,5 +384,189 @@ describe("Service", () => {
     expect(results).to.equal(`http://localhost:${port + 1}`);
     const results2 = await myService.Test2.getHeaders();
     expect(results2).to.equal(`http://localhost:${port}`);
+  });
+
+  it("runs client-side before/after hooks around an outbound call (RFC 005)", async () => {
+    const service = createService();
+    const route = "hooks-test";
+    const port = 8521;
+    const url = `http://localhost:${port}/${route}`;
+    service.module("Hooked", function () {
+      this.echo = function (data) {
+        return { got: data, trace: this.req.headers["x-trace"] || null };
+      };
+    });
+    await service.startService({ route, port });
+
+    const Client = createClient();
+    const svc = await Client.loadService(url);
+
+    const seen = [];
+    // module-level before: set a header through `this` (the module) and modify the outgoing payload
+    svc.Hooked.before("echo", function (payload, next) {
+      this.setHeaders({ "x-trace": "T-123" });
+      payload[0].tagged = true;
+      next();
+    });
+    // module-level after: observe the returned value
+    svc.Hooked.after("echo", function (result, next) {
+      seen.push(result);
+      next();
+    });
+
+    const res = await svc.Hooked.echo({ n: 1 });
+    expect(res.got).to.deep.equal({ n: 1, tagged: true }); // payload modification reached the server
+    expect(res.trace).to.equal("T-123"); // header set by the before hook reached the server
+    expect(seen).to.have.lengthOf(1); // after hook ran
+    expect(seen[0]).to.deep.equal(res); // and saw the response
+  });
+
+  it("accepts arrays and nested arrays of hooks, like the server (RFC 005)", async () => {
+    const service = createService();
+    const route = "hooks-array";
+    const port = 8522;
+    const url = `http://localhost:${port}/${route}`;
+    service.module("Arr", function () {
+      this.run = () => ({ ok: true });
+    });
+    await service.startService({ route, port });
+
+    const Client = createClient();
+    const svc = await Client.loadService(url);
+
+    const order = [];
+    // an array containing a nested array of before hooks — all run, flattened, in order
+    svc.Arr.before("run", [
+      function (p, next) {
+        order.push("a");
+        next();
+      },
+      [
+        function (p, next) {
+          order.push("b");
+          next();
+        },
+      ],
+      function (p, next) {
+        order.push("c");
+        next();
+      },
+    ]);
+
+    const res = await svc.Arr.run();
+    expect(res).to.deep.equal({ ok: true });
+    expect(order).to.deep.equal(["a", "b", "c"]); // every hook ran, in order
+  });
+
+  it("applies client / service-instance / module middleware across namespaces, in specificity order (Hooker)", async () => {
+    const service = createService();
+    const route = "ns-test";
+    const port = 8525;
+    const url = `http://localhost:${port}/${route}`;
+    service.module("Orders", function () {
+      this.reprice = () => ({ ok: true });
+    });
+    await service.startService({ route, port });
+
+    const Client = createClient();
+    const svc = await Client.loadService(url);
+
+    const order = [];
+    const mark = (label) =>
+      function (payload, next) {
+        order.push(label);
+        next();
+      };
+
+    // register at every namespace level, deliberately OUT of specificity order — gather must sort it
+    svc.Orders.before("reprice", mark("module.reprice")); // module store, bare method
+    svc.Orders.before("$all", mark("module.$all"));
+    svc.before("Orders.reprice", mark("svc.Orders.reprice")); // service instance, full namespace
+    svc.before("Orders", mark("svc.Orders"));
+    svc.before("$all", mark("svc.$all"));
+    Client.before("Orders.reprice", mark("client.Orders.reprice")); // client, full namespace
+    Client.before("Orders", mark("client.Orders"));
+    Client.before("$all", mark("client.$all"));
+
+    await svc.Orders.reprice();
+
+    // outermost-first (client → service instance → module), each level broad → specific
+    expect(order).to.deep.equal([
+      "client.$all",
+      "client.Orders",
+      "client.Orders.reprice",
+      "svc.$all",
+      "svc.Orders",
+      "svc.Orders.reprice",
+      "module.$all",
+      "module.reprice",
+    ]);
+  });
+
+  it("hooks an ARRAY of targets — methods at the module handle, namespaces at the service level (Hooker)", async () => {
+    const service = createService();
+    const route = "ns-array";
+    const port = 8526;
+    const url = `http://localhost:${port}/${route}`;
+    service.module("Orders", function () {
+      this.reprice = () => ({ ok: "reprice" });
+      this.cancel = () => ({ ok: "cancel" });
+    });
+    service.module("Users", function () {
+      this.ban = () => ({ ok: "ban" });
+    });
+    await service.startService({ route, port });
+
+    const svc = await createClient().loadService(url);
+
+    const hits = [];
+    // module handle: already scoped to Orders, so the array names METHODS
+    svc.Orders.before(["reprice", "cancel"], function (p, next) {
+      hits.push("orders-methods");
+      next();
+    });
+    // service instance: the array names NAMESPACES (multiple modules)
+    svc.before(["Orders", "Users"], function (p, next) {
+      hits.push("svc-modules");
+      next();
+    });
+
+    await svc.Orders.reprice(); // svc(Orders) + module(reprice)
+    await svc.Orders.cancel(); // svc(Orders) + module(cancel)
+    await svc.Users.ban(); // svc(Users) only — the Orders module hook doesn't apply
+
+    expect(hits).to.deep.equal([
+      "svc-modules",
+      "orders-methods",
+      "svc-modules",
+      "orders-methods",
+      "svc-modules",
+    ]);
+  });
+
+  it("catches a THROWN server middleware error and passes it back to the client", async () => {
+    const service = createService();
+    const route = "mw-error";
+    const port = 8527;
+    const url = `http://localhost:${port}/${route}`;
+    service.module("Guard", function () {
+      this.open = () => ({ ok: true });
+    });
+    service.before("Guard.open", () => {
+      throw { status: 403, message: "blocked" }; // middleware throws instead of calling sendError
+    });
+    await service.startService({ route, port });
+
+    const svc = await createClient().loadService(url);
+    let err;
+    try {
+      await svc.Guard.open();
+    } catch (e) {
+      err = e;
+    }
+    expect(err).to.exist; // the caller got the error back, not a hang
+    expect(err.message).to.equal("blocked");
+    expect(err.status).to.equal(403);
+    expect(err.SystemLynxService).to.equal(true); // came back as a genuine SystemLynx error response
   });
 });

@@ -1,4 +1,5 @@
 "use strict";
+import Hooker from "../../../utils/Hooker.mjs";
 
 const isObject = (value) =>
   typeof value === "object" ? (!value ? false : !Array.isArray(value)) : false;
@@ -42,10 +43,13 @@ export default function ServiceRequestHandler(
   reconnectModule
 ) {
   return function sendRequest() {
+    const self = this;
     const __arguments = Array.from(arguments);
+    const stores = self.__middlewareStores || {}; // { namespaced, scoped } (RFC 005)
+    const moduleName = self.__name;
 
     const tryRequest = (cb, errCount = 0) => {
-      const { route, port, host } = this.__connectionData();
+      const { route, port, host } = self.__connectionData();
       const { foundFile, fileType } = extractFilesFromArguments(__arguments);
 
       // A 2xx that isn't a genuine SystemLynx response means a stranger answered on the
@@ -63,7 +67,7 @@ export default function ServiceRequestHandler(
           ? `${protocol}${host}:${port}/mf${route}/${fn}`
           : defaultURL;
 
-      const defaultHeaders = this.headers();
+      const defaultHeaders = self.headers();
       const headers = !isEmpty(defaultHeaders) ? defaultHeaders : Service.headers();
 
       if (!foundFile) {
@@ -112,11 +116,22 @@ export default function ServiceRequestHandler(
       }
     };
 
-    return new Promise((resolve, reject) =>
-      tryRequest((err, results) => {
-        if (err) reject(err);
-        else resolve(results.returnValue);
-      })
-    );
+    return new Promise((resolve, reject) => {
+      // RFC 005: run the before-chain (client → service instance → module) synchronously before the
+      // request reads headers; then send; then run the after-chain on the returned value.
+      const before = Hooker.gather("before", stores, moduleName, fn);
+      const after = Hooker.gather("after", stores, moduleName, fn);
+      Hooker.runChain(before, self, [__arguments])
+        .then(() =>
+          tryRequest((err, results) => {
+            if (err) return reject(err);
+            const returnValue = results.returnValue;
+            Hooker.runChain(after, self, [returnValue])
+              .then(() => resolve(returnValue))
+              .catch(reject);
+          })
+        )
+        .catch(reject);
+    });
   };
 }

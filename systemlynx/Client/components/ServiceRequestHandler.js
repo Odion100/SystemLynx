@@ -2,6 +2,7 @@
 
 const { isNode } = require("../../../utils/ProcessChecker");
 const { convertToReadStream } = require("./convertToReadStream");
+const Hooker = require("../../utils/Hooker");
 const isObject = (value) =>
   typeof value === "object" ? (!value ? false : !Array.isArray(value)) : false;
 const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
@@ -45,10 +46,13 @@ module.exports = function ServiceRequestHandler(
   reconnectModule
 ) {
   return function sendRequest() {
+    const self = this;
     const __arguments = Array.from(arguments);
+    const stores = self.__middlewareStores || {}; // { client, service, module } (RFC 005)
+    const moduleName = self.__name;
 
     const tryRequest = (cb, errCount = 0) => {
-      const { route, port, host } = this.__connectionData();
+      const { route, port, host } = self.__connectionData();
       const { foundFile, fileType } = extractFilesFromArguments(__arguments);
 
       // A 2xx that isn't a genuine SystemLynx response means a stranger answered on the
@@ -66,7 +70,7 @@ module.exports = function ServiceRequestHandler(
           ? `${protocol}${host}:${port}/mf${route}/${fn}`
           : defaultURL;
 
-      const defaultHeaders = this.headers();
+      const defaultHeaders = self.headers();
       const headers = !isEmpty(defaultHeaders) ? defaultHeaders : Service.headers();
 
       if (!foundFile) {
@@ -117,11 +121,24 @@ module.exports = function ServiceRequestHandler(
       }
     };
 
-    return new Promise((resolve, reject) =>
-      tryRequest((err, results) => {
-        if (err) reject(err);
-        else resolve(results.returnValue);
-      })
-    );
+    return new Promise((resolve, reject) => {
+      // RFC 005: run the before-chain first (client → service → module). A hook sets headers via
+      // `this.setHeaders(...)` and/or reads/modifies `payload` (the arguments); it runs synchronously
+      // right before the request builds & reads headers, so the set is captured for this call. Then
+      // send, then run the after-chain on the returned value.
+      const before = Hooker.gather("before", stores, moduleName, fn);
+      const after = Hooker.gather("after", stores, moduleName, fn);
+      Hooker.runChain(before, self, [__arguments])
+        .then(() =>
+          tryRequest((err, results) => {
+            if (err) return reject(err);
+            const returnValue = results.returnValue;
+            Hooker.runChain(after, self, [returnValue])
+              .then(() => resolve(returnValue))
+              .catch(reject);
+          })
+        )
+        .catch(reject);
+    });
   };
 };

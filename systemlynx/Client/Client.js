@@ -4,10 +4,16 @@ const SocketDispatcher = require("./components/SocketDispatcher");
 const HeaderSetter = require("./components/HeaderSetter");
 const ClientModule = require("./components/ClientModule");
 const HttpClient = require("../HttpClient/HttpClient");
+const Hooker = require("../utils/Hooker");
 
 module.exports = function createClient(httpClient = HttpClient(), systemContext) {
   const Client = {};
   Client.cachedServices = {};
+
+  // RFC 005: the client is a hooks-haver — client-level before/after apply to every outbound call
+  // on every loaded service. Composed the same way as HeaderSetter.
+  Hooker.apply(Client);
+  Client.use = (plugin) => (plugin(Client), Client);
 
   Client.loadService = async (url, options = {}) => {
     if (Client.cachedServices[url] && !options.forceReload)
@@ -30,6 +36,10 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
     SocketDispatcher.apply(Service, [connData, events, systemContext]);
     HeaderSetter.apply(Service);
     Client.cachedServices[connData.serviceUrl] = Service;
+
+    // RFC 005: the service instance is a hooks-haver — before/after apply to every call on this
+    // loaded service. Composed the same way (non-enumerable, so the public shape is unchanged).
+    Hooker.apply(Service);
 
     Service.resetConnection = async (cb) => {
       try {
@@ -67,7 +77,8 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
           mod,
           connData,
           Service,
-          systemContext
+          systemContext,
+          { client: Client.__middleware, service: Service.__middleware }
         ))
     );
 

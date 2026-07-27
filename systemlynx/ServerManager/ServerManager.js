@@ -6,6 +6,7 @@ const parseMethods = require("./components/parseMethods");
 const http = require("http");
 const https = require("https");
 const socketIO = require("socket.io");
+const Hooker = require("../utils/Hooker");
 
 module.exports = function createServerManager(customServer) {
   let serverConfigurations = {
@@ -19,8 +20,6 @@ module.exports = function createServerManager(customServer) {
     useREST: false,
     useService: true,
     ssl: { key: "", cert: "" },
-    beforeware: { $all: [] },
-    afterware: { $all: [] },
     protocol: "http",
   };
 
@@ -30,6 +29,18 @@ module.exports = function createServerManager(customServer) {
   const modules = [];
 
   const ServerManager = { server };
+
+  // The server is a hooker too: it composes the SAME agnostic Hooker as the client for before/after
+  // MIDDLEWARE (namespace-keyed). Only the run context differs — the server runs each middleware as
+  // (req, res, next) with `this` = req.Module and a throw → res.sendError, applied by wrap().
+  Hooker.apply(ServerManager);
+  const wrap = (mw) => async (req, res, next) => {
+    try {
+      await mw.apply(req.Module, [req, res, next]);
+    } catch (error) {
+      res.sendError(error);
+    }
+  };
 
   // Stop listening — frees the port and makes the service unreachable (graceful shutdown /
   // simulating a clone going down). No-op before startService.
@@ -105,18 +116,8 @@ module.exports = function createServerManager(customServer) {
   };
 
   ServerManager.addModule = (name, Module, reserved_methods = []) => {
-    const {
-      host,
-      route,
-      serviceUrl,
-      useService,
-      useREST,
-      port,
-      beforeware,
-      afterware,
-      WebSocket,
-      protocol,
-    } = serverConfigurations;
+    const { host, route, serviceUrl, useService, useREST, port, WebSocket, protocol } =
+      serverConfigurations;
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
 
@@ -133,8 +134,12 @@ module.exports = function createServerManager(customServer) {
     const methods = parseMethods(Module, exclude_methods, useREST);
     const path = `${route}/${name}`;
 
-    const before_validators = [...beforeware.$all, ...(beforeware[name] || [])];
-    const after_validators = [...afterware.$all, ...(afterware[name] || [])];
+    // This method's middleware, gathered from the composed Hooker (namespace: $all → name → name.fn,
+    // by specificity) and wrapped into the server's (req, res, next) run context.
+    const middlewareHooks = (kind, fn) =>
+      Hooker.gather(kind, { namespaced: [ServerManager.__middleware] }, name, fn).map(
+        wrap,
+      );
 
     if (useService) {
       SocketEmitter.apply(Module, [path, WebSocket]);
@@ -149,19 +154,21 @@ module.exports = function createServerManager(customServer) {
       });
 
       methods.forEach((method) => {
-        const nsp = `${name}.${method.fn}`;
-        const beforeValidators = [...before_validators, ...(beforeware[nsp] || [])];
-        const afterValidators = [...after_validators, ...(afterware[nsp] || [])];
-
-        router.addService(Module, path, method, name, beforeValidators, afterValidators);
+        router.addService(
+          Module,
+          path,
+          method,
+          name,
+          middlewareHooks("before", method.fn),
+          middlewareHooks("after", method.fn),
+        );
       });
     }
 
     if (useREST)
       methods.forEach((method) => {
-        const nsp = `${name}.${method.fn}`;
-        const beforeValidators = [...before_validators, ...(beforeware[nsp] || [])];
-        const afterValidators = [...after_validators, ...(afterware[nsp] || [])];
+        const beforeValidators = middlewareHooks("before", method.fn);
+        const afterValidators = middlewareHooks("after", method.fn);
 
         switch (method.fn) {
           case "get":
@@ -180,36 +187,10 @@ module.exports = function createServerManager(customServer) {
       });
   };
 
-  const addMiddleware = (type, ...args) => {
-    const name = typeof args[0] === "string" ? args.shift() : "$all";
-    args.forEach(async (middleware) => {
-      if (Array.isArray(middleware)) {
-        middleware.map((m) => addMiddlewareItem(type, name, m));
-      } else {
-        addMiddlewareItem(type, name, middleware);
-      }
-    });
-  };
-
-  const addMiddlewareItem = (type, name, middleware) => {
-    if (Array.isArray(middleware))
-      return middleware.map((m) => addMiddlewareItem(type, name, m));
-
-    if (!serverConfigurations[type][name]) {
-      serverConfigurations[type][name] = [];
-    }
-
-    serverConfigurations[type][name].push(async function (req, res, next) {
-      try {
-        await middleware.apply(req.Module, [req, res, next]);
-      } catch (error) {
-        res.sendError(error);
-      }
-    });
-  };
-
-  ServerManager.addBeforware = (...args) => addMiddleware("beforeware", ...args);
-  ServerManager.addAfterware = (...args) => addMiddleware("afterware", ...args);
+  // The Service layer calls addBeforware/addAfterware; route them to the composed Hooker's
+  // before/after registration (namespace target + recursive array flattening handled there).
+  ServerManager.addBeforware = (...args) => ServerManager.before(...args);
+  ServerManager.addAfterware = (...args) => ServerManager.after(...args);
 
   return ServerManager;
 };

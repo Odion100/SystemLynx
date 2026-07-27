@@ -241,6 +241,48 @@ describe("App: Loading Services", () => {
         .on("ready", resolve);
     });
   });
+
+  it("full circle: useService attaches the caller, B's client middleware reads it, and the trace reaches B's server method (RFC 005 + 007)", async () => {
+    // backend service B — echoes its input plus any x-trace header it received
+    const B = createService();
+    B.module("Api", {
+      echo: function (data) {
+        return { echoed: data, trace: this.req.headers["x-trace"] || null };
+      },
+    });
+    await B.startService({ route: "svc-b", port: 8523 });
+
+    let seenCaller = null;
+
+    const App = createApp();
+    // when B loads, register a client-side before middleware on it — exactly what a SystemView
+    // client plugin would do: read the caller useService attached, stamp its trace as a header.
+    App.loadService("B", "http://localhost:8523/svc-b").onLoad((bService) => {
+      bService.Api.before("echo", function (payload, next) {
+        seenCaller = this.__caller; // the caller (module A) rides through to B's middleware
+        this.setHeaders({ "x-trace": this.__caller.trace });
+        next();
+      });
+    });
+    // module A carries a trace and reaches B through useService
+    App.module("A", function () {
+      this.trace = "T-999";
+      this.callB = async function () {
+        return this.useService("B").Api.echo({ x: 1 });
+      };
+    });
+    App.startService({ route: "app-a", port: 8524 });
+
+    await new Promise((resolve) => App.on("ready", resolve));
+
+    const result = await App.Modules().A.callB();
+
+    // full circle: A's trace reached B's SERVER method via the header the middleware stamped
+    expect(result).to.deep.equal({ echoed: { x: 1 }, trace: "T-999" });
+    // and B's client middleware genuinely got a handle on the caller (module A)
+    expect(seenCaller).to.exist;
+    expect(seenCaller.trace).to.equal("T-999");
+  });
 });
 
 describe("App SystemObjects: Initializing Modules,  Modules and configurations", () => {
