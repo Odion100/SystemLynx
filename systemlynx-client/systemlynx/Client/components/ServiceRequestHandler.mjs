@@ -52,13 +52,6 @@ export default function ServiceRequestHandler(
       const { route, port, host } = self.__connectionData();
       const { foundFile, fileType } = extractFilesFromArguments(__arguments);
 
-      // A 2xx that isn't a genuine SystemLynx response means a stranger answered on the
-      // port (stale server / proxy) — treat it like a transport failure and reconnect.
-      const onResults = (results) =>
-        results && results.SystemLynxService
-          ? cb(null, results)
-          : ErrorHandler({ message: "non-SystemLynx response on this connection" }, errCount, cb);
-
       const defaultURL = `${protocol}${host}:${port}${route}/${fn}`;
       const url =
         fileType === "file"
@@ -80,7 +73,7 @@ export default function ServiceRequestHandler(
             body: { __arguments },
             headers,
           })
-          .then(onResults)
+          .then((results) => cb(null, results))
           .catch((err) => ErrorHandler(err, errCount, cb));
       } else {
         const formData = { __arguments };
@@ -94,7 +87,7 @@ export default function ServiceRequestHandler(
             formData,
             headers,
           })
-          .then(onResults)
+          .then((results) => cb(null, results))
           .catch((err) => ErrorHandler(err, errCount, cb));
       }
     };

@@ -455,38 +455,6 @@ describe("LoadBalancer — transparent failover (reconnect through the LB)", () 
     expect(next.servedBy).to.equal(servedBy === 5491 ? 5492 : 5491);
   });
 
-  it("reconnects when a stranger (non-SystemLynx server) answers on the clone's port", async () => {
-    const http = require("http");
-    const r = "takeover";
-    const A = createService();
-    const B = createService();
-    A.module("Api", { hi: () => ({ from: "A" }) });
-    B.module("Api", { hi: () => ({ from: "B" }) });
-    await A.startService({ route: r, port: 5497 });
-    await B.startService({ route: r, port: 5498 });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5497/${r}` });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5498/${r}` });
-
-    const service = await createClient().loadService(`http://localhost:${lbPort}/${r}`);
-    const onPort = (await service.Api.hi()).from === "A" ? 5497 : 5498;
-    const survivor = onPort === 5497 ? "B" : "A";
-
-    // take that clone off the LB, kill it, and put a *stranger* on its port that returns a
-    // perfectly valid 200 — but without the SystemLynx marker
-    const svc = LoadBalancer.Tentacle.services.find((s) => s.route === `/${r}`);
-    svc.locations = svc.locations.filter((l) => !l.includes(`:${onPort}/`));
-    await new Promise((res) => (onPort === 5497 ? A : B).close(res));
-    const stranger = http.createServer((req, res) => {
-      res.writeHead(200, { "Content-Type": "application/json" });
-      res.end("{}");
-    });
-    await new Promise((res) => stranger.listen(onPort, res));
-
-    // the call gets a non-SystemLynx 200 → the client rejects it and reconnects to the survivor
-    expect((await service.Api.hi()).from).to.equal(survivor);
-    await new Promise((res) => stranger.close(res));
-  });
-
   it("directory-loaded services also reconnect through the LB (serviceUrl points at the LB)", async () => {
     const r = "dir-failover";
     const s = createService();
