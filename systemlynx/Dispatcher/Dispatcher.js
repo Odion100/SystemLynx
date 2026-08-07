@@ -5,6 +5,20 @@ module.exports = function createDispatcher(_, systemContext) {
   const events = new Map();
   const Dispatcher = this || {};
 
+  // RFC 008: when `.on`/`.once` is called through a caller-bound `useModule` view, the subscriber is
+  // on `this.__caller` and the emitter (the module that owns the event) is `this` itself. Surface the
+  // local-only event edge so a co-loaded observer (SystemView) can map who-listens-to-whose-events.
+  // `$emit`, never `.emit` — stays in-process, never socket-broadcast. Guarded no-op otherwise.
+  const emitEventEdge = (self, eventName) => {
+    const caller = self && self.__caller;
+    if (caller && typeof caller.$emit === "function")
+      caller.$emit("event_subscription", {
+        from: caller.__name,
+        to: (self && self.__name) || undefined,
+        event: eventName,
+      });
+  };
+
   Dispatcher.emit = function (eventName, data, event) {
     const registry = events.get(eventName);
     if (!registry) return Dispatcher;
@@ -16,6 +30,7 @@ module.exports = function createDispatcher(_, systemContext) {
 
   Dispatcher.on = function (eventName, callback, { limit, interval, eventId } = {}) {
     if (typeof callback !== "function") return Dispatcher;
+    emitEventEdge(this, eventName);
 
     const key = eventId || Symbol();
     if (!events.has(eventName)) events.set(eventName, new Map());
@@ -41,6 +56,7 @@ module.exports = function createDispatcher(_, systemContext) {
 
   Dispatcher.once = function (eventName, callback, { limit, interval, eventId } = {}) {
     if (typeof callback !== "function") return function () {};
+    emitEventEdge(this, eventName);
 
     const key = eventId || Symbol();
     if (!events.has(eventName)) events.set(eventName, new Map());

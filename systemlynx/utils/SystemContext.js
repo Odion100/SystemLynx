@@ -5,7 +5,7 @@
 // the originating context (the RFC-005 before hook reads `this.__caller`). If there's no caller
 // (a detached call — `this === undefined` under strict mode), everything degrades to today's
 // behavior: the shared module/client, no binding, no emit.
-module.exports = function SystemObject(system) {
+module.exports = function SystemContext(system) {
   const context = this || {};
 
   // A caller is a live module context — it carries the SystemContext methods. (Strict mode makes a
@@ -17,19 +17,33 @@ module.exports = function SystemObject(system) {
   // can build the who-calls-whom graph. Guarded — no-op if the caller can't emit.
   const emitCoupling = (caller, kind, to) => {
     if (caller && typeof caller.$emit === "function")
-      caller.$emit(kind, { from: (caller.req && caller.req.module_name) || undefined, to });
+      caller.$emit(kind, {
+        // RFC 008: `__name` is stamped at addModule, so `from` is reliable at boot too — not just
+        // during a request (the old `req.module_name`, kept as a fallback).
+        from: caller.__name || (caller.req && caller.req.module_name) || undefined,
+        to,
+      });
   };
 
   context.useModule = function (modName) {
-    emitCoupling(callerOf(this), "use_module", modName);
-    // in-process call — no transport/trace to carry, so return the shared module as-is
-    return (system.modules.find((mod) => mod.name === modName) || {}).module || {};
+    const caller = callerOf(this);
+    emitCoupling(caller, "use_module", modName);
+    const mod = (system.modules.find((m) => m.name === modName) || {}).module || {};
+    if (!caller) return mod; // no caller context — return the shared module unchanged
+
+    // RFC 008: caller-bound view so a subsequent `.on`/`.once` can attribute WHO subscribed. The
+    // subscription happens synchronously right after this resolve (no await), so `this.__caller` is
+    // reliable without ALS. Method calls resolve through the prototype — behavior is unchanged.
+    const bound = Object.create(mod);
+    bound.__caller = caller;
+    return bound;
   };
 
   context.useService = function (serviceName) {
     const caller = callerOf(this);
     emitCoupling(caller, "use_service", serviceName);
-    const client = (system.services.find((s) => s.name === serviceName) || {}).client || {};
+    const client =
+      (system.services.find((s) => s.name === serviceName) || {}).client || {};
     if (!caller) return client; // no caller context — return the shared client unchanged
 
     // Caller-bound view: accessing a module comes back as a lightweight copy (Object.create) that

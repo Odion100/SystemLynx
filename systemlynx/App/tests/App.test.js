@@ -28,7 +28,7 @@ describe("createApp()", () => {
         "getModule",
         "getModules",
         "Modules",
-        "close"
+        "close",
       )
       .that.respondsTo("module")
       .that.respondsTo("getModule")
@@ -78,7 +78,7 @@ describe("App: Loading Services", () => {
               "disconnect",
               "headers",
               "setHeaders",
-              "mod"
+              "mod",
             )
             .that.respondsTo("emit")
             .that.respondsTo("on")
@@ -88,7 +88,7 @@ describe("App: Loading Services", () => {
             .that.respondsTo("headers")
             .that.respondsTo("setHeaders");
           resolve();
-        }
+        },
       );
     });
   });
@@ -121,7 +121,7 @@ describe("App: Loading Services", () => {
             "disconnect",
             "headers",
             "setHeaders",
-            "mod"
+            "mod",
           )
           .that.respondsTo("emit")
           .that.respondsTo("$clearEvent")
@@ -163,7 +163,7 @@ describe("App: Loading Services", () => {
             "disconnect",
             "headers",
             "setHeaders",
-            "mod"
+            "mod",
           )
           .that.respondsTo("emit")
           .that.respondsTo("$clearEvent")
@@ -185,7 +185,7 @@ describe("App: Loading Services", () => {
             "disconnect",
             "headers",
             "setHeaders",
-            "mod"
+            "mod",
           )
           .that.respondsTo("emit")
           .that.respondsTo("$clearEvent")
@@ -198,7 +198,7 @@ describe("App: Loading Services", () => {
     });
   });
 
-  it("should be accessible to SystemObjects via the module.useService method", async () => {
+  it("should be accessible to SystemContext via the module.useService method", async () => {
     const Service = createService();
     const route = "test-service";
     const port = "8442";
@@ -228,7 +228,7 @@ describe("App: Loading Services", () => {
               "disconnect",
               "headers",
               "setHeaders",
-              "mod"
+              "mod",
             )
             .that.respondsTo("emit")
             .that.respondsTo("$clearEvent")
@@ -285,7 +285,7 @@ describe("App: Loading Services", () => {
   });
 });
 
-describe("App SystemObjects: Initializing Modules,  Modules and configurations", () => {
+describe("App SystemContext: Initializing Modules,  Modules and configurations", () => {
   it("should be able to use App.module to initialize a module", async () => {
     const App = createApp();
     return new Promise((resolve) =>
@@ -302,7 +302,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "$clearEvent",
             "destroy",
             "before",
-            "after"
+            "after",
           )
           .that.respondsTo("useModule")
           .that.respondsTo("useService")
@@ -325,7 +325,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "$clearEvent",
             "destroy",
             "before",
-            "after"
+            "after",
           )
           .that.respondsTo("useModule")
           .that.respondsTo("useService")
@@ -336,7 +336,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
           .that.respondsTo("before")
           .that.respondsTo("after");
         resolve();
-      })
+      }),
     );
   });
   it("should be able to use App.startService to start as Service", async () => {
@@ -346,7 +346,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
     const url = `http://localhost:${port}/${route}`;
 
     await new Promise((resolve) =>
-      App.startService({ route, port }).on("ready", resolve)
+      App.startService({ route, port }).on("ready", resolve),
     );
     const connData = await HttpClient.request({ url });
 
@@ -360,7 +360,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
         "route",
         "namespace",
         "serviceUrl",
-        "socketPath"
+        "socketPath",
       )
       .that.has.property("modules")
       .that.is.an("array").that.is.empty;
@@ -381,7 +381,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
           this.test = () => {};
           this.test2 = () => {};
         })
-        .on("ready", resolve)
+        .on("ready", resolve),
     );
 
     const connData = await HttpClient.request({ url });
@@ -396,7 +396,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
         "route",
         "namespace",
         "serviceUrl",
-        "socketPath"
+        "socketPath",
       )
       .that.has.property("modules")
       .that.is.an("array");
@@ -435,10 +435,10 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
             "modules",
             "connectionData",
             "configurations",
-            "routing"
+            "routing",
           );
         resolve();
-      })
+      }),
     );
   });
 
@@ -457,7 +457,9 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
     expect(App.getModule("mod")).to.equal(undefined);
     expect(App.getModules()).to.be.an("object").that.is.empty;
 
-    await new Promise((resolve) => App.startService({ route, port }).on("ready", resolve));
+    await new Promise((resolve) =>
+      App.startService({ route, port }).on("ready", resolve),
+    );
 
     const mod = App.getModule("mod");
     expect(mod).to.be.an("object").that.respondsTo("on").that.respondsTo("emit");
@@ -494,7 +496,9 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
       };
     });
 
-    await new Promise((resolve) => App.startService({ route, port }).on("ready", resolve));
+    await new Promise((resolve) =>
+      App.startService({ route, port }).on("ready", resolve),
+    );
 
     const live = App.getModule("mod");
     const bound = App.Modules();
@@ -549,14 +553,20 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
       };
     });
 
-    await new Promise((resolve) => App.startService({ route, port }).on("ready", resolve));
+    await new Promise((resolve) =>
+      App.startService({ route, port }).on("ready", resolve),
+    );
 
     const errMod = App.getModule("errMod");
     const errorEvent = new Promise((resolve) => errMod.on("error", resolve));
 
     const url = `http://localhost:${port}/${route}/errMod/boom`;
     try {
-      await HttpClient.request({ method: "POST", url, body: { __arguments: [{ x: 1 }] } });
+      await HttpClient.request({
+        method: "POST",
+        url,
+        body: { __arguments: [{ x: 1 }] },
+      });
     } catch (e) {
       // expected — the method throws and the error is returned over HTTP
     }
@@ -599,7 +609,7 @@ describe("App SystemObjects: Initializing Modules,  Modules and configurations",
           .that.has.all.keys("useService", "useModule", "useConfig", "test", "test2");
 
         resolve();
-      })
+      }),
     );
   });
 });
@@ -680,16 +690,16 @@ describe("SystemContext", () => {
       expect(config.configPassed).to.equal(true);
     });
     App.on("ready", function () {
-        expect(this)
-          .to.be.an("object")
-          .that.respondsTo("useService")
-          .that.respondsTo("useModule")
-          .that.respondsTo("useConfig");
-        const mod2 = this.useModule("mod2");
-        const config = this.useConfig();
-        expect(mod2.testPassed).to.equal(true);
-        expect(config.configPassed).to.equal(true);
-      });
+      expect(this)
+        .to.be.an("object")
+        .that.respondsTo("useService")
+        .that.respondsTo("useModule")
+        .that.respondsTo("useConfig");
+      const mod2 = this.useModule("mod2");
+      const config = this.useConfig();
+      expect(mod2.testPassed).to.equal(true);
+      expect(config.configPassed).to.equal(true);
+    });
     return new Promise((resolve) => App.on("ready", () => resolve()));
   });
   it("[SystemLynx][App][Client][on] should have access to systemContext during event callbacks.", async () => {
@@ -740,7 +750,7 @@ describe("SystemContext", () => {
         });
         // small delay so "subscribe" WebSocket message is processed before the HTTP call triggers the emit
         setTimeout(() => EventTesterModule.sendEvent(eventName), 100);
-      })
+      }),
     );
   });
 });

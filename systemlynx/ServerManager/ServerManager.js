@@ -121,6 +121,10 @@ module.exports = function createServerManager(customServer) {
 
     if (!serviceUrl) return moduleQueue.push({ name, Module, reserved_methods });
 
+    // RFC 008: stamp a stable, non-enumerable module name so coupling attribution works at boot
+    // (not just during a request). Non-enumerable so it never leaks into parseMethods / exposure.
+    Object.defineProperty(Module, "__name", { value: name, configurable: true });
+
     const exclude_methods = [
       "on",
       "emit",

@@ -70,3 +70,33 @@ call/event graph next to the load.
 Rendering the graph, weighting edges, and the extraction narrative are SystemView's job. The only ask
 here is the two attributed in-process signals above — the caller/emitter identity SystemView can't get
 from outside the framework.
+
+---
+
+## SHIPPED — both coupling channels now emit local edges
+
+Both attributed signals asked for above are in. Subscribe with `.on(...)` on a co-loaded plugin, same
+as `route_assigned`.
+
+1. **Call edges — RFC 007.** `useModule` / `useService` `$emit` `use_module` / `use_service`
+   `{ from, to }` on the caller module at the resolve point.
+2. **Event edges — RFC 008** (`RFCs/008-event-edge-coupling-signals.md`). When a module subscribes to
+   another module's event via `this.useModule("B").on("evt", …)`, the subscriber `$emit`s
+   `event_subscription` `{ from: subscriber, to: emitter, event }`.
+
+Enabling both reliably needed two supports, also shipped: **(a)** a stable non-enumerable `__name`
+stamped on every server module at `addModule` — so `from` is populated at **boot** (when subscriptions
+actually happen), not just during a request; and **(b)** `useModule` now returns a **caller-bound view**
+(`Object.create(module)` carrying `__caller`), mirroring `useService`, so a following `.on`/`.once` can
+attribute who subscribed. Method calls through the view are unchanged (prototype chain).
+
+**Scope call:** edges fire **once, at subscription** (structure), not on every `$emit` (frequency).
+Per-edge strength is left to SystemView, which already observes actual event deliveries — emitting on
+every fire would be hot-path noise.
+
+**Tests:** `systemlynx/utils/SystemContext.test.js` — event edge surfaces `{from,to,event}` and still
+wires the subscription; `.once` attributed the same; direct subscription (no bound view) emits nothing;
+`useModule` bound-view + boot-time `from`.
+
+**Still SystemView's job (not ours):** the Module Coupling graph, edge weighting, and the extraction
+narrative.
