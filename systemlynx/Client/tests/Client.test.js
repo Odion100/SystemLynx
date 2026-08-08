@@ -386,6 +386,31 @@ describe("Service", () => {
     expect(results2).to.equal(`http://localhost:${port}`);
   });
 
+  it("layers service headers UNDER module headers — a module setHeaders must not drop service-level auth", async () => {
+    // regression: the old logic REPLACED service headers with module headers the moment a module
+    // had any set, silently dropping service-level auth on a DIFFERENT key. Merge layers instead.
+    const service = createService();
+    const route = "header-merge";
+    const port = 8529;
+    service.module("Api", function () {
+      this.seen = function () {
+        return {
+          auth: this.req.headers["x-svc-auth"] || null,
+          tag: this.req.headers["x-mod-tag"] || null,
+        };
+      };
+    });
+    await service.startService({ route, port });
+
+    const svc = await createClient().loadService(`http://localhost:${port}/${route}`);
+    svc.setHeaders({ "x-svc-auth": "token-123" }); // service-level (e.g. per-request auth)
+    svc.Api.setHeaders({ "x-mod-tag": "M" }); // a DIFFERENT key at the module level
+
+    // before the fix: the module header replaced the service header → auth dropped → 401 in the wild
+    const seen = await svc.Api.seen();
+    expect(seen).to.deep.equal({ auth: "token-123", tag: "M" }); // auth survives, module layered on top
+  });
+
   it("runs client-side before/after hooks around an outbound call (RFC 005)", async () => {
     const service = createService();
     const route = "hooks-test";

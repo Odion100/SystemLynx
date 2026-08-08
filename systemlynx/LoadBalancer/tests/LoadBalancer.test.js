@@ -73,7 +73,7 @@ describe("LoadBalancer()", () => {
         "module",
         "before",
         "after",
-        "close"
+        "close",
       );
     expect(LoadBalancer.clone).to.be.a("function");
     expect(LoadBalancer.Tentacle)
@@ -90,7 +90,9 @@ describe("LoadBalancer()", () => {
 
   it("should start the LoadBalancer service", async () => {
     await LoadBalancer.startService({ port: lbPort, route });
-    const connData = await HttpClient.request({ url: `http://localhost:${lbPort}/${route}` });
+    const connData = await HttpClient.request({
+      url: `http://localhost:${lbPort}/${route}`,
+    });
     expect(connData.modules).to.be.an("array").with.a.lengthOf(1);
   });
 });
@@ -110,7 +112,9 @@ describe("LoadBalancer.Tentacle — service discovery & balancing", () => {
     const hit = async (r, n) => {
       const seen = new Set();
       for (let i = 0; i < n; i++)
-        seen.add((await HttpClient.request({ url: `http://localhost:${lbPort}/${r}` })).port);
+        seen.add(
+          (await HttpClient.request({ url: `http://localhost:${lbPort}/${r}` })).port,
+        );
       return seen;
     };
     expect((await hit(A.route, A.ports.length)).size).to.equal(A.ports.length); // all 3 A clones
@@ -118,12 +122,12 @@ describe("LoadBalancer.Tentacle — service discovery & balancing", () => {
   });
 
   it("should load and CALL both services from one LoadBalancer directory call", async () => {
-    const bundle = await LoadBalancer.Tentacle.directory(["/svc-a", "/svc-b"]);
-    expect(bundle).to.have.all.keys("/svc-a", "/svc-b");
+    const bundle = await LoadBalancer.Tentacle.directory(["svc-a", "svc-b"]);
+    expect(bundle).to.have.all.keys("svc-a", "svc-b"); // keyed by serviceId
 
     const Client = createClient();
-    const a = Client.createService(bundle["/svc-a"]);
-    const b = Client.createService(bundle["/svc-b"]);
+    const a = Client.createService(bundle["svc-a"]);
+    const b = Client.createService(bundle["svc-b"]);
     await Promise.all([connected(a), connected(b)]);
 
     expect(await a.Work.who()).to.deep.equal({ service: "A" });
@@ -142,10 +146,17 @@ describe("LoadBalancer — cluster coordination via this.clone (real clones)", (
         return { delegated };
       };
     };
-    const clones = await spawnCloneApps("billing", "Billing", Billing, [5501, 5502, 5503]);
+    const clones = await spawnCloneApps(
+      "billing",
+      "Billing",
+      Billing,
+      [5501, 5502, 5503],
+    );
 
     // every clone independently receives the trigger — called over the real RPC client
-    const results = await Promise.all(clones.map((c) => call(c.url, "Billing", "runMonthEnd")));
+    const results = await Promise.all(
+      clones.map((c) => call(c.url, "Billing", "runMonthEnd")),
+    );
 
     expect(ran).to.have.lengthOf(1); // the work happened once across the whole cluster
     expect(results.filter((r) => r.delegated)).to.have.lengthOf(1);
@@ -177,8 +188,15 @@ describe("LoadBalancer — cluster coordination via this.clone (real clones)", (
         return { leader };
       };
     };
-    const clones = await spawnCloneApps("sched", "Scheduler", Scheduler, [5521, 5522, 5523]);
-    const results = await Promise.all(clones.map((c) => call(c.url, "Scheduler", "tryLead")));
+    const clones = await spawnCloneApps(
+      "sched",
+      "Scheduler",
+      Scheduler,
+      [5521, 5522, 5523],
+    );
+    const results = await Promise.all(
+      clones.map((c) => call(c.url, "Scheduler", "tryLead")),
+    );
     expect(results.filter((r) => r.leader)).to.have.lengthOf(1); // exactly one leader
   });
 });
@@ -195,11 +213,13 @@ describe("this.clone — delegate & elect under real conditions (real clones)", 
       };
     };
     const clones = await spawnCloneApps("burst", "Report", Report, [5551, 5552, 5553]);
-    const services = await Promise.all(clones.map((c) => createClient().loadService(c.url)));
+    const services = await Promise.all(
+      clones.map((c) => createClient().loadService(c.url)),
+    );
 
     // 50 triggers racing the same key, spread across the live clones
     const results = await Promise.all(
-      Array.from({ length: 50 }, (_, i) => services[i % services.length].Report.fire())
+      Array.from({ length: 50 }, (_, i) => services[i % services.length].Report.fire()),
     );
 
     expect(results.filter((r) => r.delegated)).to.have.lengthOf(1); // one winner in the race
@@ -234,9 +254,16 @@ describe("this.clone — delegate & elect under real conditions (real clones)", 
         return this.clone.resign({ role: "sched2", holderId: this.req.headers.host });
       };
     };
-    const clones = await spawnCloneApps("sched2-svc", "Scheduler", Scheduler, [5565, 5566, 5567]);
+    const clones = await spawnCloneApps(
+      "sched2-svc",
+      "Scheduler",
+      Scheduler,
+      [5565, 5566, 5567],
+    );
 
-    const elected = await Promise.all(clones.map((c) => call(c.url, "Scheduler", "lead")));
+    const elected = await Promise.all(
+      clones.map((c) => call(c.url, "Scheduler", "lead")),
+    );
     expect(elected.filter((r) => r.leader)).to.have.lengthOf(1); // exactly one leader
     const leader = clones[elected.findIndex((r) => r.leader)];
 
@@ -251,10 +278,17 @@ describe("this.clone — delegate & elect under real conditions (real clones)", 
         return this.clone.elect({ role: "cron2", holderId: this.req.headers.host });
       };
     };
-    const clones = await spawnCloneApps("lapse-svc", "Scheduler", Scheduler, [5558, 5559]);
+    const clones = await spawnCloneApps(
+      "lapse-svc",
+      "Scheduler",
+      Scheduler,
+      [5344, 5322],
+    );
     LoadBalancer.Tentacle.leaseTTL = 60; // tiny lease so a non-renewing leader lapses fast
 
-    const elected = await Promise.all(clones.map((c) => call(c.url, "Scheduler", "lead")));
+    const elected = await Promise.all(
+      clones.map((c) => call(c.url, "Scheduler", "lead")),
+    );
     expect(elected.filter((r) => r.leader)).to.have.lengthOf(1); // one leader, one loser
     const loser = clones[elected.findIndex((r) => !r.leader)];
 
@@ -278,11 +312,11 @@ describe("LoadBalancer.Tentacle — discovery robustness (loops & failover)", ()
 
     // a clone that has since died is added to the pool, and is tried first
     const svc = LoadBalancer.Tentacle.services.find((s) => s.route === `/${r}`);
-    svc.locations.unshift(`http://localhost:5999/${r}`);
+    svc.members.unshift(`http://localhost:5999/${r}`);
 
     const connData = await HttpClient.request({ url: `http://localhost:${lbPort}/${r}` });
     expect(connData.port).to.equal(5411); // served the live one
-    expect(svc.locations).to.not.include(`http://localhost:5999/${r}`); // dead one evicted
+    expect(svc.members).to.not.include(`http://localhost:5999/${r}`); // dead one evicted
   });
 
   it("should 404 gracefully when every clone is dead — terminates, never loops", async () => {
@@ -293,7 +327,7 @@ describe("LoadBalancer.Tentacle — discovery robustness (loops & failover)", ()
     await LoadBalancer.Tentacle.register({ url: `http://localhost:5412/${r}` });
 
     const svc = LoadBalancer.Tentacle.services.find((x) => x.route === `/${r}`);
-    svc.locations = [`http://localhost:5997/${r}`, `http://localhost:5998/${r}`]; // all dead
+    svc.members = [`http://localhost:5997/${r}`, `http://localhost:5998/${r}`]; // all dead
 
     let error;
     try {
@@ -301,8 +335,10 @@ describe("LoadBalancer.Tentacle — discovery robustness (loops & failover)", ()
     } catch (e) {
       error = e; // the request RESOLVES (404) rather than hanging in the eviction recursion
     }
-    expect(error).to.have.property("message").that.matches(/No live clones/);
-    expect(svc.locations).to.be.empty; // every dead location was evicted
+    expect(error)
+      .to.have.property("message")
+      .that.matches(/No live members/);
+    expect(svc.members).to.be.empty; // every dead location was evicted
   });
 });
 
@@ -353,8 +389,8 @@ describe("LoadBalancer.Tentacle — intelligent routing & health", () => {
     await HttpClient.request({ url });
 
     const svc = LoadBalancer.Tentacle.services.find((s) => s.route === `/${r}`);
-    expect(svc.locations).to.include(loc1);
-    expect(svc.locations).to.not.include(loc2);
+    expect(svc.members).to.include(loc1);
+    expect(svc.members).to.not.include(loc2);
 
     LoadBalancer.Tentacle.heartbeatTTL = 30000; // restore
   });
@@ -384,7 +420,7 @@ describe("LoadBalancer.Tentacle — observability (SystemView hooks)", () => {
     const assigned = new Promise((resolve) =>
       LoadBalancer.Tentacle.on("route_assigned", (evt) => {
         if (evt.route === `/${r}`) resolve(evt);
-      })
+      }),
     );
     await HttpClient.request({ url: `http://localhost:${lbPort}/${r}` }); // a discovery = a routing decision
     const evt = await assigned;
@@ -466,7 +502,7 @@ describe("LoadBalancer — transparent failover (reconnect through the LB)", () 
 
     const bundle = await LoadBalancer.Tentacle.directory([`/${r}`]);
     // a client building from this connectionData reconnects through the LB, not the clone
-    expect(bundle[`/${r}`].serviceUrl).to.equal(`http://localhost:${lbPort}/${r}`);
+    expect(bundle[r].serviceUrl).to.equal(`http://localhost:${lbPort}/${r}`); // keyed by serviceId
   });
 
   it("rejects (does not hang) when the whole cluster is down", async () => {
@@ -515,7 +551,7 @@ describe("LoadBalancer.clone — the tentacle plugin (real cluster join)", () =>
 
     // the plugin auto-registered all three clones under one service, no manual register()
     const jobs = LoadBalancer.Tentacle.services.find((s) => s.route === "/jobs");
-    expect(jobs.locations).to.have.lengthOf(3);
+    expect(jobs.members).to.have.lengthOf(3);
 
     // fire the same event on every clone; exactly one should do the work
     const results = await Promise.all(
@@ -524,8 +560,8 @@ describe("LoadBalancer.clone — the tentacle plugin (real cluster join)", () =>
           method: "POST",
           url: `http://localhost:${port}/jobs/Jobs/run`,
           body: { __arguments: [] },
-        })
-      )
+        }),
+      ),
     );
     expect(ran).to.have.lengthOf(1);
     expect(results.filter((r) => r.returnValue.delegated)).to.have.lengthOf(1);
@@ -536,7 +572,9 @@ describe("LoadBalancer.clone — the tentacle plugin (real cluster join)", () =>
     App.module("Noop", { ping: () => ({ ok: true }) });
     const plugin = LoadBalancer.clone({ url: lbUrl });
     App.use(plugin);
-    await new Promise((r) => App.startService({ route: "bg", port: 5471 }).on("ready", r));
+    await new Promise((r) =>
+      App.startService({ route: "bg", port: 5471 }).on("ready", r),
+    );
     await plugin.installed;
 
     const res = await App.clone.delegate("bg-only-once");
@@ -569,10 +607,136 @@ describe("LoadBalancer.clone — the tentacle plugin (real cluster join)", () =>
     });
     const plugin = LoadBalancer.clone({ url: lbUrl, namespace: "cluster" });
     App.use(plugin);
-    await new Promise((r) => App.startService({ route: "relocated", port: 5473 }).on("ready", r));
+    await new Promise((r) =>
+      App.startService({ route: "relocated", port: 5473 }).on("ready", r),
+    );
     await plugin.installed;
 
     expect(App.getModule("HasClone").clone()).to.equal("my own clone method"); // intact
     expect(App.cluster).to.respondTo("delegate"); // tentacle moved aside
+  });
+});
+
+// RFC 006 — members that host DIFFERENT module subsets attach under one serviceId, and the LB
+// composes them into a single logical service. The client makes one loadService call and gets one
+// service whose modules physically live in different places — with zero behavioral change: a plain
+// service is unchanged, this only lights up when members deliberately attach under a serviceId.
+describe("LoadBalancer.Tentacle — module-level attachment (RFC 006)", () => {
+  it("attaches disjoint members into one logical service (union); each module is reached at its own location", async () => {
+    // two SEPARATE physical services — different routes, different module subsets — one serviceId
+    const core = createService();
+    core.module("Cart", { total: () => ({ from: "core", total: 42 }) });
+    await core.startService({ route: "orders-core", port: 5601 });
+
+    const reprice = createService();
+    reprice.module("Reprice", { run: () => ({ from: "reprice", ok: true }) });
+    await reprice.startService({ route: "reprice-svc", port: 5602 });
+
+    await LoadBalancer.Tentacle.register({
+      url: "http://localhost:5601/orders-core",
+      serviceId: "shop",
+    });
+    await LoadBalancer.Tentacle.register({
+      url: "http://localhost:5602/reprice-svc",
+      serviceId: "shop",
+    });
+
+    // ONE call, served at /shop, yields BOTH modules — the client never knows they're split
+    const shop = await createClient().loadService(`http://localhost:${lbPort}/shop`);
+    expect(shop.Cart).to.respondTo("total");
+    expect(shop.Reprice).to.respondTo("run");
+    expect(await shop.Cart.total()).to.deep.equal({ from: "core", total: 42 }); // hit :5601
+    expect(await shop.Reprice.run()).to.deep.equal({ from: "reprice", ok: true }); // hit :5602
+  });
+
+  it("composed connData self-describes (serviceId + discovery + per-module locations); a plain service carries none", async () => {
+    // /shop was composed in the previous test — read its raw connData
+    const composed = await HttpClient.request({ url: `http://localhost:${lbPort}/shop` });
+    expect(composed.serviceId).to.equal("shop");
+    expect(composed.discovery).to.equal(true);
+    const cart = composed.modules.find((m) => m.name === "Cart");
+    const reprice = composed.modules.find((m) => m.name === "Reprice");
+    expect(cart.connectionData.port).to.equal(5601); // Cart's own physical location
+    expect(reprice.connectionData.port).to.equal(5602); // Reprice's own physical location
+
+    // a plain, directly-loaded service has none of the discovery fields — backwards compatible
+    const plain = createService();
+    plain.module("Api", { ping: () => ({ ok: true }) });
+    await plain.startService({ route: "plain-svc", port: 5603 });
+    const direct = await HttpClient.request({ url: "http://localhost:5603/plain-svc" });
+    expect(direct.serviceId).to.equal(undefined);
+    expect(direct.discovery).to.equal(undefined);
+    expect(direct.modules[0].connectionData).to.equal(undefined);
+  });
+
+  it("per-module failover: a cloned module survives one location dying, while a sibling module is never disturbed", async () => {
+    muteLogs(); // a member is killed by design; the LB correctly warns on eviction
+    const mkStock = (port) => {
+      const s = createService();
+      s.module("Stock", { level: () => ({ servedBy: port }) });
+      return s;
+    };
+    const s1 = mkStock(5611);
+    const s2 = mkStock(5612);
+    await s1.startService({ route: "stock-1", port: 5611 });
+    await s2.startService({ route: "stock-2", port: 5612 });
+    const audit = createService();
+    audit.module("Audit", { log: () => ({ servedBy: 5613 }) });
+    await audit.startService({ route: "audit-1", port: 5613 });
+
+    for (const [port, r] of [
+      [5611, "stock-1"],
+      [5612, "stock-2"],
+      [5613, "audit-1"],
+    ])
+      await LoadBalancer.Tentacle.register({
+        url: `http://localhost:${port}/${r}`,
+        serviceId: "warehouse",
+      });
+
+    const wh = await createClient().loadService(`http://localhost:${lbPort}/warehouse`);
+    expect(await wh.Audit.log()).to.deep.equal({ servedBy: 5613 });
+
+    const first = await wh.Stock.level();
+    const dead = first.servedBy; // whichever Stock clone served it
+    await new Promise((res) => (dead === 5611 ? s1 : s2).close(res)); // that location dies
+
+    const next = await wh.Stock.level(); // Stock transparently re-resolves to the surviving clone
+    expect(next.servedBy).to.equal(dead === 5611 ? 5612 : 5611);
+    expect(await wh.Audit.log()).to.deep.equal({ servedBy: 5613 }); // sibling untouched
+  });
+
+  it("partial overlap: a shared module balances across every member that hosts it, while a member-exclusive module stays pinned", async () => {
+    // The "scale a hot module" shape: member 1 (the monolith) serves BOTH modules; member 2 is a
+    // split-out copy of the HOT module only. Hosts are tracked per module, so `Search` (on both)
+    // load-balances while `Admin` (on member 1 only) always routes there.
+    const m1 = createService();
+    m1.module("Search", { find: () => ({ ok: true }) });
+    m1.module("Admin", { stats: () => ({ ok: true }) });
+    await m1.startService({ route: "cat-full", port: 5621 });
+
+    const m2 = createService();
+    m2.module("Search", { find: () => ({ ok: true }) }); // ONLY Search — the extra copy
+    await m2.startService({ route: "cat-search", port: 5622 });
+
+    await LoadBalancer.Tentacle.register({
+      url: "http://localhost:5621/cat-full",
+      serviceId: "catalog",
+    });
+    await LoadBalancer.Tentacle.register({
+      url: "http://localhost:5622/cat-search",
+      serviceId: "catalog",
+    });
+
+    // two composes: the shared module cycles across its two hosts; the exclusive one never moves
+    const searchPorts = new Set();
+    const adminPorts = new Set();
+    for (let i = 0; i < 2; i++) {
+      const cd = await HttpClient.request({ url: `http://localhost:${lbPort}/catalog` });
+      searchPorts.add(cd.modules.find((m) => m.name === "Search").connectionData.port);
+      adminPorts.add(cd.modules.find((m) => m.name === "Admin").connectionData.port);
+    }
+    expect(searchPorts).to.include(5621).and.to.include(5622); // balanced across both members
+    expect([...adminPorts]).to.deep.equal([5621]); // only ever from its single host
   });
 });

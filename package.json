@@ -1,6 +1,6 @@
 {
   "name": "systemlynx",
-  "version": "3.3.0",
+  "version": "3.3.2",
   "description": "",
   "main": "index.js",
   "browser": {
@@ -10,6 +10,7 @@
     "index.js",
     "client.js",
     "systemlynx",
+    "utils",
     "API.md",
     "LOADBALANCER.md",
     "logo.png"

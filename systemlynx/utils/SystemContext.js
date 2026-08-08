@@ -31,12 +31,18 @@ module.exports = function SystemContext(system) {
     const mod = (system.modules.find((m) => m.name === modName) || {}).module || {};
     if (!caller) return mod; // no caller context — return the shared module unchanged
 
-    // RFC 008: caller-bound view so a subsequent `.on`/`.once` can attribute WHO subscribed. The
+    // RFC 008: caller-bound view so a subsequent `.on`/`.once` can attribute WHO subscribed (via
+    // `this.__caller`). A Proxy — NOT Object.create — with a get trap for `__caller` and NO set
+    // trap, so writes pass THROUGH to the live module. `useModule("B")` returns the real singleton:
+    // a method that reassigns a primitive on `this` (`this.count++`, a flag, a cached handle) must
+    // mutate B itself. A copy would swallow those writes onto a per-call throwaway. The
     // subscription happens synchronously right after this resolve (no await), so `this.__caller` is
-    // reliable without ALS. Method calls resolve through the prototype — behavior is unchanged.
-    const bound = Object.create(mod);
-    bound.__caller = caller;
-    return bound;
+    // reliable without ALS.
+    return new Proxy(mod, {
+      get(target, prop, receiver) {
+        return prop === "__caller" ? caller : Reflect.get(target, prop, receiver);
+      },
+    });
   };
 
   context.useService = function (serviceName) {

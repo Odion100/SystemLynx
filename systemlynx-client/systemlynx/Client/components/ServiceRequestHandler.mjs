@@ -3,7 +3,6 @@ import Hooker from "../../../utils/Hooker.mjs";
 
 const isObject = (value) =>
   typeof value === "object" ? (!value ? false : !Array.isArray(value)) : false;
-const isEmpty = (obj) => Object.getOwnPropertyNames(obj).length === 0;
 const makeQuery = (data) =>
   Object.getOwnPropertyNames(data).reduce(
     (query, name) => (query += `${name}=${data[name]}&`),
@@ -60,8 +59,11 @@ export default function ServiceRequestHandler(
           ? `${protocol}${host}:${port}/mf${route}/${fn}`
           : defaultURL;
 
-      const defaultHeaders = self.headers();
-      const headers = !isEmpty(defaultHeaders) ? defaultHeaders : Service.headers();
+      // Layer service-level headers as the base with this module's headers on top, so a module
+      // `setHeaders` no longer wholesale-SHADOWS service-level headers (auth included). Previously
+      // any module header replaced the service headers entirely — and since HeaderSetter never
+      // clears and the client is cached process-wide, that shadowing was permanent.
+      const headers = { ...Service.headers(), ...self.headers() };
 
       if (!foundFile) {
         const query =

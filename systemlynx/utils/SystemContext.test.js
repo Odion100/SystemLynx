@@ -52,11 +52,28 @@ describe("SystemContext — useService/useModule (RFC 007)", () => {
       $emit: (k, d) => emitted.push([k, d]),
     };
     const mod = ctx.useModule.call(caller, "M");
-    expect(mod).to.not.equal(module); // caller-bound copy, not the shared module
-    expect(Object.getPrototypeOf(mod)).to.equal(module); // inherits the full surface
-    expect(mod.greet()).to.equal("hi");
-    expect(mod.__caller).to.equal(caller); // subscriber rides on the copy (event-edge bridge)
+    expect(mod).to.not.equal(module); // a caller-bound view, not the raw module
+    expect(mod.greet()).to.equal("hi"); // the full surface passes through
+    expect(mod.__caller).to.equal(caller); // subscriber rides on the view (event-edge bridge)
     expect(emitted).to.deep.include(["use_module", { from: "A", to: "M" }]);
+  });
+
+  it("useModule view writes THROUGH to the live module (state is not lost on a copy)", () => {
+    // regression: the view must be a Proxy, not Object.create — a method that reassigns a
+    // primitive on `this` through a useModule handle has to mutate the real singleton.
+    const bMod = { count: 0, inc() { return ++this.count; } };
+    const system = { modules: [{ name: "B", module: bMod }], services: [], configurations: {} };
+    const ctx = SystemContext(system);
+    const caller = {
+      __name: "A",
+      useService: ctx.useService,
+      useModule: ctx.useModule,
+      $emit() {},
+    };
+    const b = ctx.useModule.call(caller, "B");
+    b.inc();
+    b.inc();
+    expect(bMod.count).to.equal(2); // both writes landed on the real module, not a throwaway copy
   });
 
   it("useModule degrades to the shared module when there is no caller", () => {

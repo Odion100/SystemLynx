@@ -6,12 +6,20 @@ const LEADER_TTL = 15000; // a leader lease; holders renew by re-electing
 
 // The `Tentacle` is the LoadBalancer's central module — the shared remote that every clone
 // routes to via its local `this.clone` handle. It manages service discovery (register +
-// round-robin routing), a directory for bulk connectionData, and cluster delegation
+// per-module routing), a directory for bulk connectionData, and cluster delegation
 // (delegate / broadcast / elect). Methods return values/promises (SystemLynx RPC idiom).
 // The module constructor receives the Express `server`.
+//
+// RFC 006 — services are keyed by `serviceId`. Physical members sharing a serviceId (a whole-
+// service clone, OR a partial deployment that hosts only some modules) attach into ONE logical
+// service served at `/{serviceId}`. On a load the Tentacle COMPOSES the union of modules across
+// members, each module entry carrying its own resolved location — so the client gets one service
+// whose modules may physically live in several places. When every member hosts the full module
+// set (today's whole-service cloning) the union degenerates to the current behavior.
 module.exports = function Tentacle(server) {
   const Tentacle = this;
-  Tentacle.services = []; // [{ route, name, locations: [url], index }]
+  // [{ serviceId, route: `/${serviceId}`, members: [url], cursors: { module -> index } }]
+  Tentacle.services = [];
   Tentacle.delegateTTL = DELEGATE_TTL; // configurable retention for delegated keys
   Tentacle.leaseTTL = LEADER_TTL; // configurable leader lease
   Tentacle.loads = new Map(); // location -> { load, seen } (pushed by clone tentacles)
@@ -37,10 +45,7 @@ module.exports = function Tentacle(server) {
     }
   };
 
-  const nextLocation = (service) => {
-    service.index = (service.index + 1) % service.locations.length;
-    return service.locations[service.index];
-  };
+  const load = (location) => (Tentacle.loads.get(location) || {}).load || 0;
 
   // A location goes stale only if it ever heartbeated and then stopped — clones without the
   // tentacle (no heartbeat) are never staleness-evicted.
@@ -51,89 +56,156 @@ module.exports = function Tentacle(server) {
     return Date.now() - entry.seen > Tentacle.heartbeatTTL;
   };
 
-  // Pick the location to route to per the active policy, after dropping stale ones.
-  const pickLocation = (service) => {
-    const stale = new Set(service.locations.filter(isStale));
-    if (stale.size) {
-      stale.forEach((loc) => {
+  // Pick, per the active policy, one of `choices` ([{ connData, ... }]) — keeping an independent
+  // round-robin cursor under `cursorKey` (per module, or "$primary" for the service-level pick),
+  // so each module balances across its own clones and the service-level location balances across
+  // full clones (today's whole-service round-robin / least-load).
+  const pick = (service, cursorKey, choices) => {
+    if (Tentacle.policy === "least-load")
+      return choices.reduce((best, c) =>
+        load(c.connData.serviceUrl) < load(best.connData.serviceUrl) ? c : best
+      );
+    const prev = service.cursors[cursorKey];
+    const i = ((prev == null ? -1 : prev) + 1) % choices.length;
+    service.cursors[cursorKey] = i;
+    return choices[i];
+  };
+
+  // Fetch every member's live connectionData, evicting stale (stopped heartbeating) and dead
+  // (unreachable) members along the way. Returns the surviving [{ location, connData }].
+  const gatherMembers = async (service) => {
+    const stale = service.members.filter(isStale);
+    if (stale.length) {
+      const staleSet = new Set(stale);
+      staleSet.forEach((loc) => {
         Tentacle.loads.delete(loc);
         Tentacle.emit("location_removed", { url: loc, route: service.route, reason: "stale" });
       });
-      service.locations = service.locations.filter((loc) => !stale.has(loc));
+      service.members = service.members.filter((loc) => !staleSet.has(loc));
     }
-    if (!service.locations.length) return null;
-    const location =
-      Tentacle.policy === "least-load"
-        ? service.locations.reduce((best, loc) =>
-            ((Tentacle.loads.get(loc) || {}).load || 0) <
-            ((Tentacle.loads.get(best) || {}).load || 0)
-              ? loc
-              : best
-          )
-        : nextLocation(service); // round-robin (default)
-    // Local-only observability: which clone got this connection, under which policy — so a
-    // co-loaded observer (e.g. a SystemView plugin inside the LB) can watch balance fairness via
-    // App.getModule("Tentacle").on("route_assigned", …). $emit, not emit: cluster telemetry stays
-    // in-process and is never socket-broadcast to connected clients.
-    if (typeof Tentacle.$emit === "function")
-      Tentacle.$emit("route_assigned", { route: service.route, location, policy: Tentacle.policy });
-    return location;
+
+    const fetched = await Promise.all(
+      service.members.map(async (location) => {
+        try {
+          return { location, connData: await HttpClient.request({ url: location }) };
+        } catch (error) {
+          return { location, connData: null };
+        }
+      })
+    );
+
+    const dead = fetched.filter((f) => !f.connData).map((f) => f.location);
+    if (dead.length) {
+      const deadSet = new Set(dead);
+      service.members = service.members.filter((loc) => !deadSet.has(loc));
+      deadSet.forEach((loc) => {
+        Tentacle.loads.delete(loc);
+        console.warn(`(LoadBalancer): removed dead member (${loc}) from ${service.route}`);
+        Tentacle.emit("location_removed", {
+          url: loc,
+          route: service.route,
+          locations: service.members,
+        });
+      });
+    }
+
+    return fetched.filter((f) => f.connData);
   };
 
-  // --- discovery: pick a live location per policy, evicting dead ones safely (terminates) ---
-  const routeToClone = (service, req, res) => {
-    const url = pickLocation(service);
-    if (!url)
-      return res
-        .status(404)
-        .json({ message: `No live clones for ${service.route}`, route: service.route });
+  // Compose the logical service: the UNION of modules across live members, each module resolved
+  // (per policy) to a member that hosts it, with that member's physical location stamped on the
+  // module entry (`connectionData`) so the client can reach it directly. Service-level fields
+  // come from a primary member (the client's fallback + service-level socket); `serviceUrl`
+  // points back through the LB so reconnect re-composes with live members. Self-describing:
+  // `serviceId` + `discovery` let any consumer (e.g. SystemView) read the logical→physical map
+  // straight from the payload. Returns null when no member is live.
+  const composeService = async (service, req) => {
+    const live = await gatherMembers(service);
+    if (!live.length) return null;
 
-    HttpClient.request({ url })
-      .then((connData) => {
-        // Reconnect must flow back through the LoadBalancer, so a dead clone fails over to a
-        // live one rather than retrying the same corpse. Point serviceUrl at the LB route the
-        // client used; host/port/namespace still target the chosen clone for the direct
-        // connection. (SystemLynx's resetConnection re-fetches from serviceUrl.)
-        const proto = req.protocol || "http";
-        connData.serviceUrl = `${proto}://${req.headers.host}${service.route}`;
-        res.json(connData);
+    const moduleHosts = {}; // module name -> [{ mod, connData }]
+    live.forEach(({ connData }) =>
+      (connData.modules || []).forEach((mod) => {
+        (moduleHosts[mod.name] || (moduleHosts[mod.name] = [])).push({ mod, connData });
       })
-      .catch(() => {
-        service.locations = service.locations.filter((location) => location !== url);
-        Tentacle.loads.delete(url);
-        console.warn(`(LoadBalancer): removed dead clone (${url}) from ${service.route}`);
-        Tentacle.emit("location_removed", {
-          url,
+    );
+
+    const modules = Object.keys(moduleHosts).map((name) => {
+      const chosen = pick(service, name, moduleHosts[name]);
+      // Local-only observability: which member served this module, under which policy — a
+      // co-loaded observer (SystemView inside the LB) watches balance via route_assigned.
+      if (typeof Tentacle.$emit === "function")
+        Tentacle.$emit("route_assigned", {
           route: service.route,
-          locations: service.locations,
+          module: name,
+          location: chosen.connData.serviceUrl,
+          policy: Tentacle.policy,
         });
-        routeToClone(service, req, res);
-      });
+      // Attach the chosen member's physical location so the client points THIS module there.
+      return {
+        ...chosen.mod,
+        connectionData: {
+          host: chosen.connData.host,
+          port: chosen.connData.port,
+          socketPath: chosen.connData.socketPath,
+        },
+      };
+    });
+
+    // Service-level fields (the client's fallback location + the service-level socket) come from a
+    // policy-picked "primary" member, so whole-service clones still round-robin / least-load at the
+    // service level exactly as before.
+    const primary = pick(service, "$primary", live).connData;
+    const proto = (req && req.protocol) || "http";
+    const base =
+      req && req.headers && req.headers.host
+        ? `${proto}://${req.headers.host}`
+        : Tentacle.lbBase || "";
+
+    return {
+      ...primary,
+      modules,
+      route: service.route,
+      serviceUrl: `${base}${service.route}`,
+      serviceId: service.serviceId,
+      discovery: true,
+      SystemLynxService: true,
+    };
   };
 
   const addServiceRoute = (service) =>
-    server.get(service.route, (req, res) => routeToClone(service, req, res));
+    server.get(service.route, async (req, res) => {
+      const connData = await composeService(service, req);
+      if (!connData)
+        return res
+          .status(404)
+          .json({ message: `No live members for ${service.route}`, route: service.route });
+      res.json(connData);
+    });
 
   // --- registration: URL-first. The connectionData at the URL is self-describing, so the
-  // caller supplies only a url (and an optional alias). The fetch doubles as a liveness check.
-  Tentacle.register = async ({ url, name } = {}) => {
+  // caller supplies a url and the `serviceId` this member attaches into (falling back to the
+  // member's own route name when omitted, so a lone service still registers). The fetch doubles
+  // as a liveness check. Members sharing a serviceId compose into one logical service. ---
+  Tentacle.register = async ({ url, serviceId, name } = {}) => {
     if (!url) return { message: "a url is required to register a clone", status: 400 };
     try {
       const connData = await HttpClient.request({ url });
-      const route = connData.route;
+      const id = serviceId || name || (connData.route || "").replace(/^\//, "") || url;
       const location = connData.serviceUrl || url;
-      let service = Tentacle.services.find((s) => s.route === route);
+      const route = `/${id}`;
+      let service = Tentacle.services.find((s) => s.serviceId === id);
 
       if (service) {
-        // re-admission: a previously evicted (or new) location rejoins
-        if (!service.locations.includes(location)) {
-          service.locations.push(location);
+        // re-admission: a previously evicted (or new) member rejoins this logical service
+        if (!service.members.includes(location)) {
+          service.members.push(location);
           Tentacle.emit("new_clone", { url: location, service });
         }
         return { message: "clone registered", service };
       }
 
-      service = { route, name: name || route, locations: [location], index: -1 };
+      service = { serviceId: id, route, members: [location], cursors: {} };
       Tentacle.services.push(service);
       addServiceRoute(service);
       Tentacle.emit("new_service", { url: location, service });
@@ -144,29 +216,24 @@ module.exports = function Tentacle(server) {
     }
   };
 
-  // --- directory: connectionData for many services in one shot, keyed by name. `only` may
-  // be an array or comma string of routes/names; omit (or "all") for every service. ---
+  // --- directory: composed connectionData for many logical services in one shot, keyed by
+  // serviceId. `only` may be an array or comma string of serviceIds/routes; omit (or "all")
+  // for every service. Each entry is composed exactly like a direct load. ---
   Tentacle.directory = async (only) => {
     const wanted =
       Array.isArray(only) || (typeof only === "string" && only && only !== "all")
         ? new Set(Array.isArray(only) ? only : only.split(","))
         : null;
 
-    const chosen = Tentacle.services
-      .filter((s) => s.locations.length && (!wanted || wanted.has(s.route) || wanted.has(s.name)))
-      .map((s) => ({ name: s.name, route: s.route, url: nextLocation(s) }));
+    const chosen = Tentacle.services.filter(
+      (s) => s.members.length && (!wanted || wanted.has(s.route) || wanted.has(s.serviceId))
+    );
 
     const bundle = {};
     await Promise.all(
-      chosen.map(async ({ name, route, url }) => {
-        try {
-          const connData = await HttpClient.request({ url });
-          // point reconnect back through the LB (failover) for directory-loaded services too
-          if (Tentacle.lbBase) connData.serviceUrl = Tentacle.lbBase + route;
-          bundle[name] = connData;
-        } catch (error) {
-          /* skip a location that failed to answer */
-        }
+      chosen.map(async (service) => {
+        const connData = await composeService(service, null);
+        if (connData) bundle[service.serviceId] = connData;
       })
     );
     return bundle;
@@ -239,9 +306,9 @@ module.exports = function Tentacle(server) {
   Tentacle.getClusterState = () => ({
     policy: Tentacle.policy,
     services: Tentacle.services.map((s) => ({
+      serviceId: s.serviceId,
       route: s.route,
-      name: s.name,
-      locations: s.locations.slice(),
+      members: s.members.slice(),
     })),
     loads: Array.from(Tentacle.loads.entries()).map(([location, { load, seen }]) => ({
       location,

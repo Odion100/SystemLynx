@@ -52,9 +52,19 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
           systemContext,
         ]);
 
-        modules.forEach(({ namespace, route, name }) => {
+        modules.forEach(({ namespace, route, name, connectionData }) => {
           if (Service[name]) {
-            Service[name].__setConnection({ host, port, route, namespace, socketPath });
+            // RFC 006: re-point each module to ITS OWN location from the freshly-composed view,
+            // so one module's dead location doesn't drag its siblings. Falls back to the
+            // service-level location for a plain single-location service (today's behavior).
+            const loc = connectionData || {};
+            Service[name].__setConnection({
+              host: loc.host || host,
+              port: loc.port || port,
+              route,
+              namespace,
+              socketPath: loc.socketPath || socketPath,
+            });
             Service[name].emit("reconnect");
           }
         });

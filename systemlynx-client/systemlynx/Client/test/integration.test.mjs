@@ -154,6 +154,51 @@ async function main() {
     await new Promise((r) => S.close(r));
   });
 
+  // --- RFC 006: the client honors PER-MODULE locations in a composed (LoadBalancer) connData,
+  // routing each module to its own physical service. Two real services, one composed view. ---
+  await test("module attachment: each module routes to its own location from a composed connData", async () => {
+    const core = createService();
+    core.module("Cart", { total: () => ({ from: "core", total: 42 }) });
+    await core.startService({ route: "orders-core", port: 8733 });
+
+    const reprice = createService();
+    reprice.module("Reprice", { run: () => ({ from: "reprice", ok: true }) });
+    await reprice.startService({ route: "reprice-svc", port: 8734 });
+
+    // compose a logical service exactly as the LoadBalancer's Tentacle would: union of modules,
+    // each stamped with its own physical location.
+    const HttpClient = createHttpClient();
+    const cd1 = await HttpClient.request({ url: "http://localhost:8733/orders-core" });
+    const cd2 = await HttpClient.request({ url: "http://localhost:8734/reprice-svc" });
+    const composed = {
+      ...cd1, // primary member supplies the service-level fallback + socket
+      modules: [
+        {
+          ...cd1.modules[0],
+          connectionData: { host: cd1.host, port: cd1.port, socketPath: cd1.socketPath },
+        },
+        {
+          ...cd2.modules[0],
+          connectionData: { host: cd2.host, port: cd2.port, socketPath: cd2.socketPath },
+        },
+      ],
+      serviceId: "shop",
+      discovery: true,
+    };
+
+    const shop = createClient().createService(composed);
+    await new Promise((res) => shop.on("connect", res));
+
+    // Cart lives ONLY on :8733, Reprice ONLY on :8734 — a successful call to each proves the
+    // client pointed that module at its own location (a wrong route would 404).
+    assert.deepEqual(await shop.Cart.total(), { from: "core", total: 42 });
+    assert.deepEqual(await shop.Reprice.run(), { from: "reprice", ok: true });
+
+    if (shop.disconnect) shop.disconnect();
+    await new Promise((r) => core.close(r));
+    await new Promise((r) => reprice.close(r));
+  });
+
   // --- teardown so the script exits cleanly ---
   if (service.disconnect) service.disconnect();
   await new Promise((resolve) => Service.close(resolve));

@@ -38,7 +38,17 @@ export default function SystemLynxClientModule(
       systemContext,
     ]);
   };
-  ClientModule.__setConnection({ host, port, route, namespace, socketPath });
+  // RFC 006: a module may carry its OWN physical location (`mod.connectionData`) when the service
+  // was composed by the LoadBalancer from members in different places. Prefer it; fall back to the
+  // service-level location when absent (a plain, single-location service — today's behavior).
+  const loc = connectionData || {};
+  ClientModule.__setConnection({
+    host: loc.host || host,
+    port: loc.port || port,
+    route,
+    namespace,
+    socketPath: loc.socketPath || socketPath,
+  });
 
   // On a transport failure, reconnect at the *service* level via Service.resetConnection:
   // it re-fetches connectionData from serviceUrl (the LoadBalancer route when loaded through
