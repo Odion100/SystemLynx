@@ -25,9 +25,11 @@ That "interchangeable full copies" assumption is the whole of what this RFC chan
 `serviceId` may host **different module subsets**, so the LB must stop returning one location's connData
 and start **composing the union**.
 
-`serviceId` is already a first-class value — not a new concept: `clone.js` registers a clone under
-`name: serviceId` (`systemlynx/LoadBalancer/clone.js`), matching the SystemView plugin convention. The
-attach key exists today; this RFC leans on it.
+`serviceId` is a first-class value — and a **required** one on the join: `clone.js` registers a clone
+under its `serviceId` (`systemlynx/LoadBalancer/clone.js`), matching the SystemView plugin convention.
+The LoadBalancer is net-new, so there is no legacy join to accommodate — a member must declare its
+`serviceId`, with **no fallback** that guesses an id from name/route/url. `LoadBalancer.clone(...)`
+throws without one and `Tentacle.register(...)` rejects it with a 400.
 
 ## Design
 

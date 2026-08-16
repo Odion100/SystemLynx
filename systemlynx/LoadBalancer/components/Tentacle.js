@@ -184,14 +184,17 @@ module.exports = function Tentacle(server) {
     });
 
   // --- registration: URL-first. The connectionData at the URL is self-describing, so the
-  // caller supplies a url and the `serviceId` this member attaches into (falling back to the
-  // member's own route name when omitted, so a lone service still registers). The fetch doubles
-  // as a liveness check. Members sharing a serviceId compose into one logical service. ---
-  Tentacle.register = async ({ url, serviceId, name } = {}) => {
+  // caller supplies a url and the `serviceId` this member attaches into — both REQUIRED. The
+  // LoadBalancer is net-new; there's no legacy join to accommodate, so a service must declare who
+  // it is. The fetch doubles as a liveness check. Members sharing a serviceId compose into one
+  // logical service. ---
+  Tentacle.register = async ({ url, serviceId } = {}) => {
     if (!url) return { message: "a url is required to register a clone", status: 400 };
+    if (!serviceId)
+      return { message: "a serviceId is required to register a clone", status: 400 };
     try {
       const connData = await HttpClient.request({ url });
-      const id = serviceId || name || (connData.route || "").replace(/^\//, "") || url;
+      const id = serviceId;
       const location = connData.serviceUrl || url;
       const route = `/${id}`;
       let service = Tentacle.services.find((s) => s.serviceId === id);

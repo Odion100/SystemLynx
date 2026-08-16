@@ -8,15 +8,20 @@ module.exports = function createService(
   systemContext = {}
 ) {
   const ServerManager = createServerManager(customServer, customWebSocketServer);
-  const { startService, addBeforware, addAfterware, server, WebSocket } = ServerManager;
+  const { startService, addBeforware, addAfterware, server } = ServerManager;
   const Service = {
     startService,
     server,
-    WebSocket,
     before: addBeforware,
     after: addAfterware,
     close: (...args) => ServerManager.close(...args),
   };
+  // `WebSocket` only exists once startService has built it, so read it live — destructuring it
+  // here handed out `undefined` forever, including to every module constructor below.
+  Object.defineProperty(Service, "WebSocket", {
+    enumerable: true,
+    get: () => ServerManager.WebSocket,
+  });
 
   Service.module = function (name, constructor, reserved_methods = []) {
     const exclude_methods = reserved_methods.concat(
@@ -65,7 +70,7 @@ module.exports = function createService(
         undefined,
         systemContext,
       ]);
-      constructor.apply(Module, [server, WebSocket]);
+      constructor.apply(Module, [server, ServerManager.WebSocket]);
       ServerManager.addModule(name, Module, exclude_methods);
       return Module;
     }

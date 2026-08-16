@@ -41,35 +41,46 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
     // loaded service. Composed the same way (non-enumerable, so the public shape is unchanged).
     Hooker.apply(Service);
 
+    // RFC 010 — one reconnect at a time. An outage fires `disconnect` on the service and on every
+    // module, so without this a single blip starts a reconnect per event; each opens sockets and
+    // the losers get overwritten before anything can close them.
+    let reconnecting = null;
+
+    const rebuild = async () => {
+      const { modules, host, port, route, namespace, socketPath } =
+        await loadConnectionData(httpClient, connData.serviceUrl);
+
+      SocketDispatcher.apply(Service, [
+        { socketPath, namespace },
+        events,
+        systemContext,
+      ]);
+
+      modules.forEach(({ namespace, route, name, connectionData }) => {
+        if (Service[name]) {
+          // RFC 006: re-point each module to ITS OWN location from the freshly-composed view,
+          // so one module's dead location doesn't drag its siblings. Falls back to the
+          // service-level location for a plain single-location service (today's behavior).
+          const loc = connectionData || {};
+          Service[name].__setConnection({
+            host: loc.host || host,
+            port: loc.port || port,
+            route,
+            namespace,
+            socketPath: loc.socketPath || socketPath,
+          });
+          Service[name].emit("reconnect");
+        }
+      });
+
+      Service.emit("reconnect");
+    };
+
     Service.resetConnection = async (cb) => {
+      // A reconnect already running is the one we want — join it rather than start a rival.
+      if (!reconnecting) reconnecting = rebuild().finally(() => (reconnecting = null));
       try {
-        const { modules, host, port, route, namespace, socketPath } =
-          await loadConnectionData(httpClient, connData.serviceUrl);
-
-        SocketDispatcher.apply(Service, [
-          { socketPath, namespace },
-          events,
-          systemContext,
-        ]);
-
-        modules.forEach(({ namespace, route, name, connectionData }) => {
-          if (Service[name]) {
-            // RFC 006: re-point each module to ITS OWN location from the freshly-composed view,
-            // so one module's dead location doesn't drag its siblings. Falls back to the
-            // service-level location for a plain single-location service (today's behavior).
-            const loc = connectionData || {};
-            Service[name].__setConnection({
-              host: loc.host || host,
-              port: loc.port || port,
-              route,
-              namespace,
-              socketPath: loc.socketPath || socketPath,
-            });
-            Service[name].emit("reconnect");
-          }
-        });
-
-        Service.emit("reconnect");
+        await reconnecting;
         if (typeof cb === "function") cb();
       } catch (error) {
         console.error(
@@ -78,6 +89,31 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
         // surface the failure so callers reject instead of hanging on an unfulfilled retry
         if (typeof cb === "function") cb(error);
       }
+    };
+
+    // RFC 011 — the service-level counterpart: scope every module in one call.
+    //
+    //   const asUser = Profiles.withHeaders({ "Internal-Identity": sid });
+    //   await asUser.Teams.add(team);
+    //   await asUser.Users.get(id);
+    //
+    // The request handler reads the SERVICE from a closure (not `this`), so this can't work by
+    // overriding `Service.headers()`. It scopes each module view instead — module headers layer on
+    // top of the service's, so the result is the same and the shared service is untouched.
+    Service.withHeaders = function withHeaders(extra = {}) {
+      return new Proxy(Service, {
+        get(target, prop, receiver) {
+          if (prop === "withHeaders")
+            return (more = {}) => target.withHeaders({ ...extra, ...more });
+          const value = Reflect.get(target, prop, receiver);
+          return value && value.__isClientModule ? value.withHeaders(extra) : value;
+        },
+        set() {
+          throw new Error(
+            "[SystemLynx][Client]: a withHeaders view is read-only — set on the service itself"
+          );
+        },
+      });
     };
 
     connData.modules.forEach(

@@ -770,14 +770,24 @@ to the LoadBalancer, auto-registers this service, installs `this.clone` on every
 |:---|:---|:---|
 | `url` | *(required)* | The LoadBalancer to connect to |
 | `namespace` | `"clone"` | The per-module handle name; **throws** if a module already defines it |
-| `serviceId` | route | Names this service in the cluster (SystemView convention) |
+| `serviceId` | *(required)* | The identity this service registers under; members sharing one compose into a single logical service served at `/{serviceId}` (SystemView convention) |
 | `reportInterval` | `10000` | How often (ms) to push load + heartbeat |
 
 ```javascript
 App.startService({ route: "orders", port: 4100 })
   .module("Orders", Orders)
-  .use(LoadBalancer.clone({ url: "http://localhost:4000/loadbalancer" }));
+  .use(LoadBalancer.clone({
+    url: "http://localhost:4000/loadbalancer",
+    serviceId: "Orders",
+  }));
 ```
+
+`serviceId` is required — `clone()` throws without it and `Tentacle.register` answers 400. Nothing
+guesses an id from the route or url.
+
+Members that share a `serviceId` may host **different module subsets**. The LoadBalancer composes
+the union: one `loadService("<lb>/Orders")` returns every module across every member, each pointed
+at its own location, with per-module routing and failover.
 
 ---
 

@@ -16,7 +16,7 @@ const spawnCloneApps = async (route, moduleName, def, ports, onReady) => {
   for (const port of ports) {
     const App = createApp();
     App.module(moduleName, def);
-    const plugin = LoadBalancer.clone({ url: lbUrl });
+    const plugin = LoadBalancer.clone({ url: lbUrl, serviceId: route });
     App.use(plugin);
     if (onReady) App.on("clone_ready", onReady);
     await new Promise((r) => App.startService({ route, port }).on("ready", r));
@@ -36,7 +36,10 @@ const spawnClones = async (route, moduleName, def, ports) => {
     const svc = createService();
     svc.module(moduleName, def);
     await svc.startService({ route, port });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:${port}/${route}` });
+    await LoadBalancer.Tentacle.register({
+      url: `http://localhost:${port}/${route}`,
+      serviceId: route,
+    });
   }
 };
 
@@ -94,6 +97,22 @@ describe("LoadBalancer()", () => {
       url: `http://localhost:${lbPort}/${route}`,
     });
     expect(connData.modules).to.be.an("array").with.a.lengthOf(1);
+  });
+});
+
+// The LoadBalancer is net-new — there is no legacy join to accommodate, so registering REQUIRES a
+// serviceId. No fallback that guesses an id from name/route/url ("so a lone service still registers").
+describe("LoadBalancer — registering requires a serviceId (no backwards-compat fallback)", () => {
+  it("Tentacle.register rejects a missing serviceId with 400 (before it even reaches the member)", async () => {
+    const res = await LoadBalancer.Tentacle.register({
+      url: `http://localhost:${lbPort}/${route}`,
+    });
+    expect(res).to.include({ status: 400 });
+    expect(res.message).to.match(/serviceId is required/);
+  });
+
+  it("LoadBalancer.clone throws synchronously without a serviceId", () => {
+    expect(() => LoadBalancer.clone({ url: lbUrl })).to.throw(/serviceId.*required/);
   });
 });
 
@@ -308,7 +327,7 @@ describe("LoadBalancer.Tentacle — discovery robustness (loops & failover)", ()
     const live = createService();
     live.module("Ping", { ping: () => ({ ok: true }) });
     await live.startService({ route: r, port: 5411 });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5411/${r}` });
+    await LoadBalancer.Tentacle.register({ url: `http://localhost:5411/${r}`, serviceId: r });
 
     // a clone that has since died is added to the pool, and is tried first
     const svc = LoadBalancer.Tentacle.services.find((s) => s.route === `/${r}`);
@@ -324,7 +343,7 @@ describe("LoadBalancer.Tentacle — discovery robustness (loops & failover)", ()
     const r = "all-dead-svc";
     const s = createService();
     await s.startService({ route: r, port: 5412 });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5412/${r}` });
+    await LoadBalancer.Tentacle.register({ url: `http://localhost:5412/${r}`, serviceId: r });
 
     const svc = LoadBalancer.Tentacle.services.find((x) => x.route === `/${r}`);
     svc.members = [`http://localhost:5997/${r}`, `http://localhost:5998/${r}`]; // all dead
@@ -351,8 +370,8 @@ describe("LoadBalancer.Tentacle — intelligent routing & health", () => {
     await c2.startService({ route: r, port: 5462 });
     const loc1 = `http://localhost:5461/${r}`;
     const loc2 = `http://localhost:5462/${r}`;
-    await LoadBalancer.Tentacle.register({ url: loc1 });
-    await LoadBalancer.Tentacle.register({ url: loc2 });
+    await LoadBalancer.Tentacle.register({ url: loc1, serviceId: r });
+    await LoadBalancer.Tentacle.register({ url: loc2, serviceId: r });
 
     LoadBalancer.Tentacle.report({ location: loc1, load: 10 });
     LoadBalancer.Tentacle.report({ location: loc2, load: 2 });
@@ -375,8 +394,8 @@ describe("LoadBalancer.Tentacle — intelligent routing & health", () => {
     await s2.startService({ route: r, port: 5464 });
     const loc1 = `http://localhost:5463/${r}`;
     const loc2 = `http://localhost:5464/${r}`;
-    await LoadBalancer.Tentacle.register({ url: loc1 });
-    await LoadBalancer.Tentacle.register({ url: loc2 });
+    await LoadBalancer.Tentacle.register({ url: loc1, serviceId: r });
+    await LoadBalancer.Tentacle.register({ url: loc2, serviceId: r });
 
     LoadBalancer.Tentacle.heartbeatTTL = 60;
     LoadBalancer.Tentacle.heartbeat({ location: loc1 });
@@ -414,7 +433,7 @@ describe("LoadBalancer.Tentacle — observability (SystemView hooks)", () => {
     s.module("Api", { ping: () => ({ ok: true }) });
     await s.startService({ route: r, port: 5571 });
     const location = `http://localhost:5571/${r}`;
-    await LoadBalancer.Tentacle.register({ url: location });
+    await LoadBalancer.Tentacle.register({ url: location, serviceId: r });
 
     // a co-loaded observer (e.g. a SystemView plugin inside the LB) subscribes exactly like this
     const assigned = new Promise((resolve) =>
@@ -452,7 +471,7 @@ describe("LoadBalancer — transparent failover (reconnect through the LB)", () 
     const s = createService();
     s.module("Api", { hi: () => ({ hi: true }) });
     await s.startService({ route: r, port: 5481 });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5481/${r}` });
+    await LoadBalancer.Tentacle.register({ url: `http://localhost:5481/${r}`, serviceId: r });
 
     const connData = await HttpClient.request({ url: `http://localhost:${lbPort}/${r}` });
     expect(connData.port).to.equal(5481); // direct connection targets the clone...
@@ -473,8 +492,8 @@ describe("LoadBalancer — transparent failover (reconnect through the LB)", () 
     B.module("Api", clone(5492));
     await A.startService({ route: r, port: 5491 });
     await B.startService({ route: r, port: 5492 });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5491/${r}` });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5492/${r}` });
+    await LoadBalancer.Tentacle.register({ url: `http://localhost:5491/${r}`, serviceId: r });
+    await LoadBalancer.Tentacle.register({ url: `http://localhost:5492/${r}`, serviceId: r });
 
     // a consumer loads the service THROUGH the LoadBalancer and makes a call — lands on one clone
     const service = await createClient().loadService(`http://localhost:${lbPort}/${r}`);
@@ -496,7 +515,7 @@ describe("LoadBalancer — transparent failover (reconnect through the LB)", () 
     const s = createService();
     s.module("Api", { hi: () => ({ ok: true }) });
     await s.startService({ route: r, port: 5541 });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5541/${r}` });
+    await LoadBalancer.Tentacle.register({ url: `http://localhost:5541/${r}`, serviceId: r });
     // hit the LB over HTTP once so it learns its own base URL (the lbBase middleware)
     await HttpClient.request({ url: `http://localhost:${lbPort}/${r}` });
 
@@ -511,7 +530,7 @@ describe("LoadBalancer — transparent failover (reconnect through the LB)", () 
     const only = createService();
     only.module("Api", { ping: () => ({ ok: true }) });
     await only.startService({ route: r, port: 5495 });
-    await LoadBalancer.Tentacle.register({ url: `http://localhost:5495/${r}` });
+    await LoadBalancer.Tentacle.register({ url: `http://localhost:5495/${r}`, serviceId: r });
 
     const service = await createClient().loadService(`http://localhost:${lbPort}/${r}`);
     await service.Api.ping(); // works while the clone is up
@@ -542,7 +561,7 @@ describe("LoadBalancer.clone — the tentacle plugin (real cluster join)", () =>
           return { delegated };
         };
       });
-      const plugin = LoadBalancer.clone({ url: lbUrl });
+      const plugin = LoadBalancer.clone({ url: lbUrl, serviceId: "jobs" });
       App.use(plugin);
       await new Promise((r) => App.startService({ route: "jobs", port }).on("ready", r));
       await plugin.joined; // wait until it has actually registered with the LB
@@ -570,7 +589,7 @@ describe("LoadBalancer.clone — the tentacle plugin (real cluster join)", () =>
   it("exposes App.clone as a capturable handle for background/event code (no `this`)", async () => {
     const App = createApp();
     App.module("Noop", { ping: () => ({ ok: true }) });
-    const plugin = LoadBalancer.clone({ url: lbUrl });
+    const plugin = LoadBalancer.clone({ url: lbUrl, serviceId: "bg" });
     App.use(plugin);
     await new Promise((r) =>
       App.startService({ route: "bg", port: 5471 }).on("ready", r),
@@ -586,7 +605,7 @@ describe("LoadBalancer.clone — the tentacle plugin (real cluster join)", () =>
     App.module("Collider", function () {
       this.clone = () => "my own method";
     });
-    const plugin = LoadBalancer.clone({ url: lbUrl });
+    const plugin = LoadBalancer.clone({ url: lbUrl, serviceId: "collide" });
     App.use(plugin);
     App.startService({ route: "collide", port: 5472 });
 
@@ -605,7 +624,7 @@ describe("LoadBalancer.clone — the tentacle plugin (real cluster join)", () =>
     App.module("HasClone", function () {
       this.clone = () => "my own clone method";
     });
-    const plugin = LoadBalancer.clone({ url: lbUrl, namespace: "cluster" });
+    const plugin = LoadBalancer.clone({ url: lbUrl, serviceId: "relocated", namespace: "cluster" });
     App.use(plugin);
     await new Promise((r) =>
       App.startService({ route: "relocated", port: 5473 }).on("ready", r),

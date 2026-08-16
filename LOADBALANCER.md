@@ -41,11 +41,18 @@ const { App, LoadBalancer } = require("systemlynx");
 
 App.startService({ route: "orders", port: 4100 })
   .module("Orders", Orders)
-  .use(LoadBalancer.clone({ url: "http://localhost:4000/loadbalancer" }));
+  .use(LoadBalancer.clone({
+    url: "http://localhost:4000/loadbalancer",
+    serviceId: "Orders",
+  }));
 ```
 
 On startup the plugin connects to the LoadBalancer, **auto-registers** this service (no manual
 `register` call), installs a `this.clone` handle on every module, and starts reporting its load.
+
+`serviceId` is the identity this service registers under, and it is **required** — there is no
+fallback that guesses one. Members sharing a `serviceId` become one logical service, served at
+`/{serviceId}`.
 
 ### Options
 
@@ -56,7 +63,7 @@ anything else passes through, so the signature never breaks as options grow.
 |:---|:---|:---|
 | `url` | *(required)* | The LoadBalancer to connect to |
 | `namespace` | `"clone"` | The per-module handle name (`this.clone`); relocate it on collision |
-| `serviceId` | route | Names this service in the cluster (matches the SystemView plugin convention) |
+| `serviceId` | *(required)* | The identity this service registers under; members sharing one compose into a single logical service served at `/{serviceId}` (matches the SystemView plugin convention) |
 | `reportInterval` | `10000` | How often (ms) to push load + heartbeat to the LoadBalancer |
 
 ---

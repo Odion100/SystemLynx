@@ -78,6 +78,7 @@ describe("App: Loading Services", () => {
               "disconnect",
               "headers",
               "setHeaders",
+              "withHeaders",
               "mod",
             )
             .that.respondsTo("emit")
@@ -121,6 +122,7 @@ describe("App: Loading Services", () => {
             "disconnect",
             "headers",
             "setHeaders",
+              "withHeaders",
             "mod",
           )
           .that.respondsTo("emit")
@@ -163,6 +165,7 @@ describe("App: Loading Services", () => {
             "disconnect",
             "headers",
             "setHeaders",
+              "withHeaders",
             "mod",
           )
           .that.respondsTo("emit")
@@ -185,6 +188,7 @@ describe("App: Loading Services", () => {
             "disconnect",
             "headers",
             "setHeaders",
+              "withHeaders",
             "mod",
           )
           .that.respondsTo("emit")
@@ -228,6 +232,7 @@ describe("App: Loading Services", () => {
               "disconnect",
               "headers",
               "setHeaders",
+              "withHeaders",
               "mod",
             )
             .that.respondsTo("emit")

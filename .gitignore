@@ -106,3 +106,10 @@ dist
 # Claude Code
 CLAUDE.md
 .claude/
+
+# SystemView
+.systemview/
+scratch/
+
+# npm auth (never committed)
+NPM_TOKEN.txt

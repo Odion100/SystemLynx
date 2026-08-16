@@ -9,20 +9,24 @@ const CLONE_METHODS = ["delegate", "broadcast", "elect", "resign"];
 
 // LoadBalancer.clone(options) → a SystemLynx plugin. A service joins the cluster with:
 //
-//   App.use(LoadBalancer.clone({ url: "http://host:port/loadbalancer" }));
+//   App.use(LoadBalancer.clone({ url: "http://host:port/loadbalancer", serviceId: "Profiles" }));
 //
 // It connects to the remote LoadBalancer, auto-registers this service, and installs a
 // `this[namespace]` handle (default `this.clone`) on every module — plus `App[namespace]`
 // as a capturable handle for background/event code. `this.clone.delegate(...)` is the local
 // near side; it proxies over the wire to the remote `Tentacle.delegate(...)` that does the work.
 //
-// Options is an open object (SystemView-plugin shape): `url` (required), `namespace`
-// (default "clone"), an optional `name` alias, and any future tunables pass through.
+// Options is an open object (SystemView-plugin shape): `url` (required), `serviceId` (required —
+// the identity this service registers as), `namespace` (default "clone"), and future tunables.
 module.exports = function clone(options = {}) {
   // `serviceId` names this service in the cluster (matches the SystemView plugin convention).
   const { url, namespace = "clone", serviceId, ...rest } = options;
   if (!url)
     throw new Error("[LoadBalancer.clone]: `url` (the LoadBalancer to connect to) is required");
+  if (!serviceId)
+    throw new Error(
+      "[LoadBalancer.clone]: `serviceId` (the identity this service registers as) is required"
+    );
 
   let resolveInstalled, rejectInstalled;
   const installed = new Promise((resolve, reject) => {
@@ -96,7 +100,7 @@ module.exports = function clone(options = {}) {
           lb.Tentacle.on("broadcast", ({ key, data } = {}) => broadcasts.emit(key, data));
           await lb.Tentacle.register({
             url: system.connectionData.serviceUrl,
-            name: serviceId,
+            serviceId,
           });
           resolveJoined(handle);
           App.emit("clone_ready", handle);

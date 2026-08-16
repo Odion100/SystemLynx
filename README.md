@@ -293,8 +293,14 @@ const { App, LoadBalancer } = require("systemlynx");
 
 App.startService({ route: "orders", port: 4100 })
   .module("Orders", Orders)
-  .use(LoadBalancer.clone({ url: "http://localhost:4000/loadbalancer" }));
+  .use(LoadBalancer.clone({
+    url: "http://localhost:4000/loadbalancer",
+    serviceId: "Orders",
+  }));
 ```
+
+`serviceId` is the identity this service registers under, and it is required. Every member sharing
+one becomes part of the same logical service, reachable at `<loadbalancer>/Orders`.
 
 Now any module can coordinate across the cluster — e.g. run a task exactly once, no matter how
 many clones are live:

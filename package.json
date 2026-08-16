@@ -1,6 +1,6 @@
 {
   "name": "systemlynx",
-  "version": "3.3.2",
+  "version": "3.4.0",
   "description": "",
   "main": "index.js",
   "browser": {
@@ -19,6 +19,7 @@
     "start": "node index.js",
     "test": "jest --verbose && npm run test:client",
     "test:client": "node systemlynx-client/systemlynx/Client/test/integration.test.mjs",
+    "testbed": "nodemon testbed/start.js",
     "publish:lib": "npm publish",
     "publish:client": "npm publish ./systemlynx-client"
   },
@@ -46,7 +47,9 @@
     "chai-as-promised": "^7.1.1",
     "cz-conventional-changelog": "^3.3.0",
     "jest": "^24.9.0",
-    "mocha": "^6.2.0"
+    "mocha": "^6.2.0",
+    "nodemon": "^3.1.14",
+    "systemview-plugin": "^2.22.0"
   },
   "config": {
     "commitizen": {
@@ -54,6 +57,7 @@
     }
   },
   "jest": {
+    "testEnvironment": "node",
     "moduleNameMapper": {
       "axios": "axios/dist/node/axios.cjs"
     }

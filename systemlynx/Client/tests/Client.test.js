@@ -53,6 +53,7 @@ describe("Client", () => {
         "disconnect",
         "headers",
         "setHeaders",
+              "withHeaders",
         "orders",
       )
       .that.respondsTo("emit")
@@ -74,6 +75,7 @@ describe("Client", () => {
         "disconnect",
         "headers",
         "setHeaders",
+              "withHeaders",
         "__setConnection",
         "__connectionData",
         "action1",
