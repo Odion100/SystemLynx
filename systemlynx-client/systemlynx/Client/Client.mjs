@@ -29,6 +29,45 @@ export default function createClient(httpClient = HttpClient(), systemContext) {
     return Service;
   };
 
+  Client.unloadService = (url) => {
+    const Service = Client.cachedServices[url];
+    if (!Service) return false; // idempotent: safe on a failed proof, cached or not
+
+    // Drop the entry FIRST so anything re-entrant can't resurrect this service mid-teardown.
+    delete Client.cachedServices[url];
+
+    const quietly = (fn) => {
+      try {
+        if (typeof fn === "function") fn();
+      } catch (e) {
+        /* a socket that never connected still has to be let go */
+      }
+    };
+
+    // Stop the reconnect BEFORE anything closes, or teardown reopens itself. This removes only the
+    // handler the client installed — a caller's own `on("disconnect", …)` is left alone.
+    quietly(Service.__stopReconnect);
+
+    Object.keys(Service).forEach((key) => {
+      const Module = Service[key];
+      if (!Module || !Module.__isClientModule) return;
+      // destroy() unsubscribes tracked events OVER the socket, so it must run before the close.
+      quietly(() => Module.destroy());
+      quietly(() => Module.disconnect());
+    });
+
+    quietly(() => Service.destroy());
+    quietly(() => Service.disconnect());
+    return true;
+  };
+
+  // The discarded-client case: close everything this client ever loaded.
+  Client.disconnect = () =>
+    Object.keys(Client.cachedServices).reduce(
+      (closed, url) => closed + (Client.unloadService(url) ? 1 : 0),
+      0
+    );
+
   Client.createService = (connData) => {
     const events = {};
 
@@ -130,7 +169,15 @@ export default function createClient(httpClient = HttpClient(), systemContext) {
         ))
     );
 
-    Service.on("disconnect", Service.resetConnection);
+    // RFC 013 — KEEP THE UNSUBSCRIBE. `on()` hands back the function that removes exactly this
+    // handler; discarding it is what forced teardown to reach for `$clearEvent("disconnect")`,
+    // which removes EVERY disconnect listener including a caller's own. Precise beats broad.
+    const stopReconnectingOnDisconnect = Service.on("disconnect", Service.resetConnection);
+    Object.defineProperty(Service, "__stopReconnect", {
+      value: stopReconnectingOnDisconnect,
+      enumerable: false,
+      configurable: true,
+    });
 
     return Service;
   };

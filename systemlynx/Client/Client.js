@@ -26,6 +26,55 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
     return Service;
   };
 
+  // RFC 013 — CLOSING A CLIENT. Every `loadService` opens one socket per module PLUS one for the
+  // service, and until now nothing could close them: `disconnect`/`destroy` live on each dispatcher
+  // and nothing aggregated them. A caller that discards a client (SystemView's hub rebuilt one every
+  // 20s on a failed proof) left 7 live sockets per discard with no handle attached to anything —
+  // ~10,000 ESTABLISHED in 8 hours. Not RFC 010: that was re-application onto a live service; this
+  // is repeated construction, and it leaked identically after that fix.
+  //
+  // The order below is the whole reason this belongs in the framework rather than in a caller:
+  // `Service.on("disconnect", Service.resetConnection)` means a naive `disconnect()` FIRES A
+  // RECONNECT and rebuilds everything it just closed.
+  Client.unloadService = (url) => {
+    const Service = Client.cachedServices[url];
+    if (!Service) return false; // idempotent: safe on a failed proof, cached or not
+
+    // Drop the entry FIRST so anything re-entrant can't resurrect this service mid-teardown.
+    delete Client.cachedServices[url];
+
+    const quietly = (fn) => {
+      try {
+        if (typeof fn === "function") fn();
+      } catch (e) {
+        /* a socket that never connected still has to be let go */
+      }
+    };
+
+    // Stop the reconnect BEFORE anything closes, or teardown reopens itself. This removes only the
+    // handler the client installed — a caller's own `on("disconnect", …)` is left alone.
+    quietly(Service.__stopReconnect);
+
+    Object.keys(Service).forEach((key) => {
+      const Module = Service[key];
+      if (!Module || !Module.__isClientModule) return;
+      // destroy() unsubscribes tracked events OVER the socket, so it must run before the close.
+      quietly(() => Module.destroy());
+      quietly(() => Module.disconnect());
+    });
+
+    quietly(() => Service.destroy());
+    quietly(() => Service.disconnect());
+    return true;
+  };
+
+  // The discarded-client case: close everything this client ever loaded.
+  Client.disconnect = () =>
+    Object.keys(Client.cachedServices).reduce(
+      (closed, url) => closed + (Client.unloadService(url) ? 1 : 0),
+      0
+    );
+
   Client.createService = (connData) => {
     const events = {};
 
@@ -128,7 +177,15 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
         ))
     );
 
-    Service.on("disconnect", Service.resetConnection);
+    // RFC 013 — KEEP THE UNSUBSCRIBE. `on()` hands back the function that removes exactly this
+    // handler; discarding it is what forced teardown to reach for `$clearEvent("disconnect")`,
+    // which removes EVERY disconnect listener including a caller's own. Precise beats broad.
+    const stopReconnectingOnDisconnect = Service.on("disconnect", Service.resetConnection);
+    Object.defineProperty(Service, "__stopReconnect", {
+      value: stopReconnectingOnDisconnect,
+      enumerable: false,
+      configurable: true,
+    });
 
     return Service;
   };
