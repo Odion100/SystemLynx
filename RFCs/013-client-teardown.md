@@ -1,6 +1,6 @@
 # RFC 013 — closing a client: `unloadService` and `disconnect`
 
-*Status: building. Reported by systemview-test; root cause confirmed on both sides before agreeing.*
+*Status: built — shipped in systemlynx 3.5.0 / systemlynx-client 3.3.0. Reported by systemview-test; root cause confirmed on both sides before agreeing.*
 
 ## The problem
 

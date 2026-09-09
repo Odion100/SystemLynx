@@ -11,6 +11,12 @@ const makeQuery = (data) =>
     "?"
   );
 
+// DEPTH IS LOAD-BEARING FOR SECURITY ELSEWHERE. This checks `arg.file` / `arg.files` on each
+// TOP-LEVEL argument and does not recurse. MCPServer's guard against remote callers naming a
+// server-side path is written to exactly this depth — if you make this recurse so uploads work on
+// nested objects, `MCPServer.dispatch` must recurse in the same change or a nested `file` becomes
+// an unauthenticated arbitrary file read. `Client/tests/fileExtractionDepth.test.js` fails if this
+// depth changes.
 const extractFilesFromArguments = (__arguments) => {
   let foundFile = null;
   let fileType = null;

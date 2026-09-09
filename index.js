@@ -5,6 +5,7 @@ const createLoadBalancer = require("./systemlynx/LoadBalancer/LoadBalancer");
 const createService = require("./systemlynx/Service/Service");
 const createServerManager = require("./systemlynx/ServerManager/ServerManager");
 const createClient = require("./systemlynx/Client/Client");
+const createMCPServer = require("./systemlynx/MCPServer/MCPServer");
 const createHttpClient = require("./systemlynx/HttpClient/HttpClient");
 const createDispatcher = require("./systemlynx/Dispatcher/Dispatcher");
 
@@ -36,4 +37,5 @@ module.exports = {
   createHttpClient,
   createServerManager,
   createDispatcher,
+  createMCPServer,
 };

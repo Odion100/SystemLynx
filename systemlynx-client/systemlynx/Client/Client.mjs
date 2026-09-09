@@ -29,6 +29,80 @@ export default function createClient(httpClient = HttpClient(), systemContext) {
     return Service;
   };
 
+  // RFC 012 — consume an MCP server, ours or anyone's. No separate MCP client object: the client
+  // built on load IS the client, and the wire is JSON-RPC over the same axios this client already
+  // uses — no MCP SDK on the consuming side at all (which is also why the browser build needs no
+  // new dependency). Tools arrive as handles shaped like modules — `tools.Users.get(...)` — and
+  // calls run the client's OWN before/after chain, which is where control lives: auth,
+  // allow-lists, validation, logging, all ordinary middleware.
+  Client.loadMCP = async (url, { headers: baseHeaders = {} } = {}) => {
+    let nextId = 1;
+    const rpc = async (method, params) => {
+      const message = { jsonrpc: "2.0", method, ...(params ? { params } : {}) };
+      const isRequest = !method.startsWith("notifications/");
+      if (isRequest) message.id = nextId++;
+      const res = await httpClient.request({
+        method: "post",
+        url,
+        // The spec requires a client to accept both; the server answers with whichever it does.
+        headers: { Accept: "application/json, text/event-stream", ...baseHeaders },
+        body: message,
+      });
+      if (!isRequest) return undefined;
+      if (res && res.error)
+        throw { message: res.error.message, code: res.error.code, MCP: true };
+      return res && res.result;
+    };
+
+    await rpc("initialize", {
+      protocolVersion: "2025-03-26",
+      capabilities: {},
+      clientInfo: { name: "systemlynx-client", version: "1.0.0" },
+    });
+    await rpc("notifications/initialized");
+    const { tools: toolList } = await rpc("tools/list");
+
+    const tools = {};
+    Object.defineProperties(tools, {
+      __tools: { value: toolList }, // the raw tool list, to inspect
+      __close: { value: () => undefined }, // stateless HTTP — nothing held open
+    });
+
+    toolList.forEach((tool) => {
+      // "Users.get" → tools.Users.get; a dotless tool name lands at the top level.
+      const [moduleName, fn] = tool.name.includes(".")
+        ? tool.name.split(".")
+        : [null, tool.name];
+      const holder = moduleName ? (tools[moduleName] = tools[moduleName] || {}) : tools;
+
+      holder[fn] = async (args) => {
+        // The client's hook chain applies to tool calls exactly as it does to method calls.
+        const stores = { namespaced: [Client.__middleware] };
+        const payload = [args];
+        await Hooker.runChain(
+          Hooker.gather("before", stores, moduleName || fn, fn),
+          tools,
+          [payload]
+        );
+        const result = await rpc("tools/call", { name: tool.name, arguments: payload[0] });
+        const text = ((result.content || []).find((c) => c.type === "text") || {}).text;
+        let returnValue;
+        try {
+          returnValue = text ? JSON.parse(text) : undefined;
+        } catch (e) {
+          returnValue = text;
+        }
+        if (result.isError)
+          throw { message: text || "tool call failed", MCPTool: tool.name };
+        const after = Hooker.gather("after", stores, moduleName || fn, fn);
+        await Hooker.runChain(after, tools, [returnValue]);
+        return returnValue;
+      };
+    });
+
+    return tools;
+  };
+
   Client.unloadService = (url) => {
     const Service = Client.cachedServices[url];
     if (!Service) return false; // idempotent: safe on a failed proof, cached or not

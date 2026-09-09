@@ -16,6 +16,27 @@ module.exports = function createService(
     after: addAfterware,
     close: (...args) => ServerManager.close(...args),
   };
+
+  // RFC 012 — how a composed capability publishes its own facts in `GET /<route>`. Non-enumerable
+  // for the same reason as on ServerManager: plumbing, not public surface.
+  // Same passthrough, same reason (see ServerManager.__arity): a count, never a function.
+  Object.defineProperty(Service, "__arity", {
+    get: () => ServerManager.__arity,
+    enumerable: false,
+    configurable: true,
+  });
+
+  Object.defineProperty(Service, "__inputKeys", {
+    get: () => ServerManager.__inputKeys,
+    enumerable: false,
+    configurable: true,
+  });
+
+  Object.defineProperty(Service, "contributeConnectionData", {
+    value: (...args) => ServerManager.contributeConnectionData(...args),
+    enumerable: false,
+    configurable: true,
+  });
   // `WebSocket` only exists once startService has built it, so read it live — destructuring it
   // here handed out `undefined` forever, including to every module constructor below.
   Object.defineProperty(Service, "WebSocket", {

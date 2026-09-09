@@ -113,3 +113,6 @@ scratch/
 
 # npm auth (never committed)
 NPM_TOKEN.txt
+
+# testbed runtime artifacts
+testbed/*.out

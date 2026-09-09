@@ -579,7 +579,19 @@ describe("App SystemContext: Initializing Modules,  Modules and configurations",
     const info = await errorEvent;
     expect(info)
       .to.be.an("object")
-      .that.has.all.keys("module_name", "fn", "arguments", "status", "message", "error");
+      // RFC 012 — `path` joined the payload so an observer can interpret `arguments`: on an
+      // upload route (/sf/, /mf/) parseRequest has swapped file placeholders for multer's object,
+      // and without the path this event could not be told apart from a plain route carrying a
+      // caller's own `file` key.
+      .that.has.all.keys(
+        "module_name",
+        "fn",
+        "arguments",
+        "path",
+        "status",
+        "message",
+        "error"
+      );
     expect(info.module_name).to.equal("errMod");
     expect(info.fn).to.equal("boom");
     expect(info.status).to.equal(400);

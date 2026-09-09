@@ -66,6 +66,14 @@ module.exports = function createRouter(server, config) {
           module_name,
           fn,
           arguments: req.arguments,
+          // RFC 012 — an observer of this event sees the SAME post-substitution `arguments` an
+          // afterware sees, but had none of the context needed to interpret them: `req` is not in
+          // this payload, so it could not tell an upload route (where `file`/`files` were swapped
+          // for multer's object) from a plain one where a `file` key is the caller's own data.
+          // Carrying the path makes both subscriptions able to reach the same conclusion, which is
+          // the point — an observer that reads uploads correctly on success and wrongly on failure
+          // is worse than one that fails consistently. (systemview-test's constraint.)
+          path: req.path,
           status,
           message,
           error,
