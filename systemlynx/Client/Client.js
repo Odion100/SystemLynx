@@ -20,6 +20,29 @@ module.exports = function createClient(httpClient = HttpClient(), systemContext)
       return Client.cachedServices[url];
 
     const connData = await loadConnectionData(httpClient, url, options);
+
+    // FORCE-RELOAD MUST EVICT, NOT OVERWRITE — and it was broken two ways at once.
+    //
+    // `createService` returns the cached instance when one exists for this serviceUrl, so a reload
+    // handed back the OLD service and then awaited its "connect" — an event that already fired and
+    // never fires again. `forceReload: true` HUNG FOREVER on anything already cached. And had it
+    // returned, the replaced instance would have been dropped still holding every socket it opened
+    // (one per module plus one for the service), which is RFC 013's leak reached down the sanctioned
+    // refresh path rather than by discarding a client.
+    //
+    // Evicting first fixes both: unloadService closes those sockets and deletes the entry, so
+    // createService genuinely builds a new instance and there is a real "connect" to wait for.
+    // Done AFTER the fetch on purpose — a refresh that fails to reach the service leaves the working
+    // instance in place instead of tearing down a live service on a transient network blip.
+    if (options.forceReload) {
+      Client.unloadService(url);
+      // createService keys off connData.serviceUrl, which is not guaranteed to be the url we were
+      // given. Evicting only one of the two would leave the stale instance reachable and the hang
+      // intact, so both are cleared. unloadService is idempotent and safe on a missing entry.
+      if (connData.serviceUrl && connData.serviceUrl !== url)
+        Client.unloadService(connData.serviceUrl);
+    }
+
     const Service = Client.createService(connData);
     Client.cachedServices[url] = Service;
     await new Promise((resolve) => Service.on("connect", resolve));

@@ -193,6 +193,64 @@ Service.startService({ route: "test/service", port: "4400", host: "localhost" })
 
 ---
 
+# Serving your modules to AI agents (MCP)
+
+The same modules you already host can be served as [MCP](https://modelcontextprotocol.io) tools, so an agent can call them the same way your own code does — through the front door, with your middleware and auth intact.
+
+```javascript
+const { Service, createMCPServer } = require("systemlynx");
+
+Service.module("Repo", Repo);
+Service.module("Codebase", Codebase);
+
+const mcp = createMCPServer(Service);
+
+mcp.schema("Repo", {
+  findRfc: {
+    description:
+      "Search every RFC in this repo for a word or phrase and return the ones that mention it. Use this first when you need to know whether a decision was written down.",
+    input: { query: { type: "string", description: "a word or phrase, case-insensitive" } },
+    required: ["query"],
+  },
+});
+
+// One endpoint, exposing exactly what you chose. Serve as many as you like.
+mcp.serve("repo-mcp", { expose: ["Repo.findRfc"] });
+
+await Service.startService({ route: "workbench", port: 6400 });
+```
+
+Point an agent at it:
+
+```
+claude mcp add --transport http repo http://localhost:6400/workbench/repo-mcp
+```
+
+**A method becomes a tool only when it has a schema *and* a route exposes it.** Nothing is published because it happens to exist, so `signUp`, `deleteAll` and `patchLocations` are never reachable because someone forgot.
+
+Two things worth knowing up front:
+
+- **The `description` is the entire interface a model decides from.** Say what it does *and* when to reach for it.
+- **A method meant to be consumed should take one object.** MCP hands a tool one object, so `({ id })` fits and `(pattern, dir)` does not — the server refuses the latter rather than letting it return a confident empty answer.
+
+You can also front a service you don't own, without modifying it:
+
+```javascript
+const mcp = createMCPServer("http://localhost:4400/api");   // a URL, not a Service
+await mcp.start({ port: 6400, route: "mcp" });
+```
+
+And consume any MCP server — SystemLynx or not — from either client:
+
+```javascript
+const tools = await Client.loadMCP("http://localhost:6400/mcp/repo-mcp");
+await tools.Repo.findRfc({ query: "teardown" });
+```
+
+See the [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/API.md#mcpserver) for the full MCP API.
+
+---
+
 # Middleware
 
 SystemLynx supports middleware that runs before or after a module method is called. This is useful for things like authentication, logging, or validating requests.

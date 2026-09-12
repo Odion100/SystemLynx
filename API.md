@@ -14,6 +14,7 @@ For a high-level introduction see the [README](./README.md).
 - [App](#app)
 - [Client](#client)
 - [ClientModule](#clientmodule)
+- [MCPServer](#mcpserver)
 - [LoadBalancer](#loadbalancer)
 - [HttpClient](#httpclient)
 
@@ -623,6 +624,33 @@ const user = await ProfilesAPI.Users.get({ id: "abc123" });
 const games = await BasketballAPI.Games.find({ userId: "abc123" });
 ```
 
+### Client.loadMCP(url [, options])
+
+Loads **any** MCP server — not just a SystemLynx one — and returns its tools shaped like modules, so an MCP tool is called the same way a remote method is.
+
+```javascript
+const tools = await Client.loadMCP("http://localhost:6400/mcp/my-mcp");
+
+await tools.Repo.findRfc({ query: "teardown" });
+```
+
+A tool named `Module.method` becomes `tools.Module.method`. A tool with no dot is called directly: `tools.search({ q })`.
+
+| Option | Type | Description |
+|:---|:---|:---|
+| `headers` | object | Sent with every tool call — this is how identity reaches the server |
+
+| Property | Description |
+|:---|:---|
+| `tools.__tools` | The raw `tools/list` result — names, descriptions and input schemas |
+| `tools.__close()` | Release the connection |
+
+Client hooks (`Client.before` / `Client.after`) apply to tool calls, so retries, logging and auth work the same way they do for `loadService`.
+
+No dependency is required for this — SystemLynx speaks JSON-RPC over the HTTP client it already ships, and the browser client gets `loadMCP` too.
+
+---
+
 **Service-level methods on the returned object:**
 
 | Method | Description |
@@ -731,6 +759,115 @@ Users.setHeaders({ Authorization: `Bearer ${token}` });
 Returns the current module-level headers object.
 
 ---
+
+---
+
+## MCPServer
+
+Serves your modules as [MCP](https://modelcontextprotocol.io) tools, so an agent can call them. A method becomes a tool only when it has been given a schema **and** a route exposes it — nothing is published because it exists.
+
+```javascript
+const { createMCPServer } = require("systemlynx");
+```
+
+### createMCPServer([serviceOrUrl])
+
+Three forms, chosen by what you pass:
+
+| Call | Form | What it does |
+|:---|:---|:---|
+| `createMCPServer(service)` | **mounted** | Adds MCP routes to a service you already have. Calls go through that service's front door, so middleware, `this.req` and auth all run. |
+| `createMCPServer(url)` | **standalone** | Fronts a *remote* SystemLynx service by URL, on its own listener. The remote service is not modified and does not know. |
+| `createMCPServer()` | **inert** | No target. Useful for building and inspecting a schema without serving it. |
+
+### mcp.schema(moduleName, definitions)
+
+Declares the tools a module offers. Returns the server, so it chains.
+
+```javascript
+mcp.schema("Repo", {
+  findRfc: {
+    description: "Search every RFC for a word or phrase and return the ones that mention it.",
+    input: { query: { type: "string", description: "a word or phrase, case-insensitive" } },
+    required: ["query"],
+  },
+});
+```
+
+| Key | Description |
+|:---|:---|
+| `description` | **The whole interface a model decides from.** Say what it does *and when to reach for it*. |
+| `input` | JSON-Schema properties for the tool's arguments |
+| `required` | Names from `input` that must be supplied |
+| `args` | Only for **positional** methods — the `input` names to spread, in order. See below. |
+
+### mcp.serve(routePath, { expose })
+
+Defines one endpoint with one tool list. Call it as many times as you want different surfaces — **one server, many routes.**
+
+```javascript
+mcp.serve("support-mcp", { expose: ["Users.get", "Orders.find"] });
+mcp.serve("admin-mcp",   { expose: ["Users", "Orders", "Billing"] });
+```
+
+`expose` takes `"*"`, a module name, a `"Module.method"` name, or a list of those. Anything else throws — a route that quietly advertises nothing is worse than one that refuses.
+
+Routes may be served **after** `startService()`; they are live on the next call.
+
+### mcp.start(options) / mcp.close()
+
+Only for the standalone and inert forms — a mounted server rides on its service and needs neither.
+
+```javascript
+await mcp.start({ port: 6400, route: "mcp" });   // host defaults to localhost
+```
+
+### mcp.plugin(App)
+
+Mounts onto an `App` via `App.use(...)`, the same as any other plugin.
+
+### mcp.routes() / mcp.tools(routePath)
+
+Read-only. `routes()` returns `{ path, kind }` for everything this server answers — `kind` is `"served"` or `"module"` — and is what gets published in the service's connection data, so a service describes its own MCP routes rather than a human keeping a list. `tools(routePath)` returns the tool list one route would advertise, without going over the wire.
+
+### Per-module endpoints, automatic
+
+Every module with declarations also answers at `<base>/<Module>/mcp`, exposing only itself. There is **no service-wide endpoint** unless you serve one deliberately.
+
+### Positional methods and `args`
+
+MCP hands a tool one object. A method written `({ id })` receives it as-is. A method written `(pattern, dir)` would bind the whole object to `pattern` and leave `dir` undefined — a plausible **empty answer**, not an error. Declare `args` for those:
+
+```javascript
+mcp.schema("Codebase", {
+  grep: {
+    description: "Search the source and return matching lines.",
+    input: { pattern: { type: "string" }, dir: { type: "string" } },
+    args: ["pattern", "dir"],   // spread positionally, in this order
+  },
+});
+```
+
+You rarely need this: **a method meant to be consumed should take one object.** Positional is fine where the caller is a programmer holding the signature; it is the wrong shape where the caller only has a schema.
+
+### What it refuses, and why
+
+Mounted servers check their own declarations on first contact and **drop** anything provably wrong rather than advertising it:
+
+| Refusal | Reason |
+|:---|:---|
+| a declared method the service does not answer | the schema is a liar |
+| a method taking 2+ positional parameters, served as one object | it would return a confident empty answer |
+| a schema declaring a field the method cannot read | a caller following it would send a field nothing looks at |
+| any method taking `file` / `files` | uploads resolve paths on the **server's** disk — a remote caller must never reach that |
+
+Each refusal is printed with the reason and the offending name.
+
+### Identity
+
+An MCP call is an HTTP request carrying whatever the caller sent, so **whatever your service's auth already does, it keeps doing.** Headers are forwarded per call — including across the standalone form's proxy hop — and absence is forwarded as absence.
+
+**Never put identity in a schema.** A model filling in whose behalf it acts on is a hole, not a feature.
 
 ---
 

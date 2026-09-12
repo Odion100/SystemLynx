@@ -21,6 +21,18 @@ export default function createClient(httpClient = HttpClient(), systemContext) {
 
     const connData = await loadConnectionData(httpClient, url, options);
 
+    // FORCE-RELOAD MUST EVICT, NOT OVERWRITE. `createService` returns the cached instance when one
+    // exists, so a reload handed back the OLD service and awaited its "connect" — an event that
+    // already fired and never fires again, so `forceReload: true` HUNG FOREVER on anything cached.
+    // Had it returned, the replaced instance would have leaked every socket it opened. Evicting
+    // first fixes both. After the fetch on purpose: a refresh that cannot reach the service leaves
+    // the working instance in place rather than tearing it down on a transient blip.
+    if (options.forceReload) {
+      Client.unloadService(url);
+      if (connData.serviceUrl && connData.serviceUrl !== url)
+        Client.unloadService(connData.serviceUrl);
+    }
+
     const Service = Client.createService(connData);
 
     Client.cachedServices[url] = Service;
