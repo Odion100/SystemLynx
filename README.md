@@ -17,7 +17,7 @@ const { App, Service, Client, LoadBalancer } = require("systemlynx");
 - **Client** - Used in a client application to load a **Service**, providing access to all the objects hosted by the **Service**.
 - **App** - provides a modular interface for creating and loading Services.
 
-Find the full [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/API.md#tasksjs-api-documentation) here.
+Find the full [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/docs/API.md#tasksjs-api-documentation) here.
 
 ---
 
@@ -247,7 +247,7 @@ const tools = await Client.loadMCP("http://localhost:6400/mcp/repo-mcp");
 await tools.Repo.findRfc({ query: "teardown" });
 ```
 
-See the [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/API.md#mcpserver) for the full MCP API.
+See the [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/docs/API.md#mcpserver) for the full MCP API.
 
 ---
 
@@ -281,7 +281,7 @@ Service.before("Users", authMiddleware);
 Service.before("Users.delete", requireAdminMiddleware);
 ```
 
-See the [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/API.md#tasksjs-api-documentation) for the full middleware API.
+See the [API Documentation](https://github.com/Odion100/SystemLynx/blob/master/docs/API.md#tasksjs-api-documentation) for the full middleware API.
 
 ---
 
@@ -333,7 +333,7 @@ Because every module can be hosted independently, you can scale horizontally (ru
 
 The **LoadBalancer** turns many identical instances of your services into one cluster —
 service discovery, connect-time load balancing, and cluster coordination
-(`delegate` / `broadcast` / `elect`). See **[LOADBALANCER.md](./LOADBALANCER.md)** for the full guide.
+(`delegate` / `broadcast` / `elect`). See **[LOADBALANCER.md](./docs/LOADBALANCER.md)** for the full guide.
 
 Run a LoadBalancer:
 

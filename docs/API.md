@@ -130,6 +130,36 @@ await Service.startService({
 
 ---
 
+### CORS — and what passing your own server turns off
+
+A service that builds its **own** express app answers every route with:
+
+```
+Access-Control-Allow-Origin: *
+Access-Control-Allow-Methods: GET, POST, PUT ,DELETE
+Access-Control-Allow-Headers: X-Requested-With,content-type, Authorization
+```
+
+so a browser page can `Client.loadService` it cross-origin out of the box. The websocket gets
+`cors: { origin: "*" }` unconditionally.
+
+**Passing your own express app opts you out of all of it.** `createApp(myExpressApp)` /
+`createServerManager(myServer)` deliberately skips that middleware — it is your app, and the
+framework will not put headers on routes it does not own. Add your own:
+
+```javascript
+const app = express();
+app.use(cors());                 // or your own allowlist
+const Service = createApp(app);
+```
+
+**The failure mode if you forget** is misleading: the browser blocks the manifest fetch, axios
+reports a generic `Network Error`, and the client throws an **Array** of three such attempts — which
+reads like the service is down rather than like the browser refused it. Check for
+`access-control-allow-origin` on `GET /<route>` before chasing a dead service.
+
+---
+
 ### Service.before([name,] ...middleware)
 
 Adds middleware that runs **before** a module method is called.
@@ -321,6 +351,25 @@ Middleware functions follow the Express convention: `(req, res, next) => {}`. Th
 The `this` value inside middleware is the module instance — the same context as inside module methods. This gives middleware access to `this.emit`, `this.useModule`, `this.useService`, and any other properties on the module.
 
 SystemLynx adds the following properties to the request and response objects.
+
+### The wire format — and why not to hand-roll it
+
+Arguments travel as a single `__arguments` **array** on the request body, not as the body itself:
+
+```
+POST /<route>/<Module>/<method>
+{ "__arguments": [ { "id": "abc" } ] }
+```
+
+Posting the argument object directly produces a method called with **no arguments** — a plausible
+empty answer, not an error. Uploads use `/sf/` and `/mf/` variants of the same path, with the file
+placeholder swapped in by the client.
+
+**Call services through the client** (`Client.loadService`, or the MCP surface), which builds this
+for you. Hand-rolled HTTP against the wire is the most common way to get a silent wrong answer out
+of a service that is working perfectly.
+
+---
 
 ### Request properties
 
@@ -659,7 +708,106 @@ No dependency is required for this — SystemLynx speaks JSON-RPC over the HTTP 
 | `service.setHeaders(headers)` | Set default headers sent with every request from this service |
 | `service.headers()` | Returns the current default headers |
 | `service.resetConnection()` | Manually trigger a reconnection |
+| `service.withHeaders(headers)` | A view of the whole service scoped to these headers, for one chain of calls |
 | `service.disconnect()` | Disconnect the WebSocket |
+
+---
+
+### service.withHeaders(headers)
+
+Returns a **view** of the service with these headers layered on for every module — without mutating
+the service. Use it to act as a particular caller for a few calls, instead of `setHeaders` and
+remembering to put it back.
+
+```javascript
+const asUser = await Client.loadService(url).then((s) => s.withHeaders({ "Internal-Identity": sid }));
+
+await asUser.Teams.add(team);
+await asUser.Users.get(id);     // same identity, no global state changed
+```
+
+Module-level headers layer **on top of** the service's — `{ ...service.headers(), ...module.headers() }` —
+so a module view can add to the service's identity without losing it.
+
+---
+
+### Client.unloadService(url)
+
+Closes a loaded service and forgets it: every module's socket, plus the service's own, then the cache
+entry. Returns `true` if something was unloaded.
+
+```javascript
+Client.unloadService("http://localhost:4400/api");
+```
+
+**This is how you refresh a service.** A client that discards its handle without unloading leaks one
+socket per module plus one for the service, with nothing left holding them. When a service
+re-registers and you want a fresh handle, evict and load again:
+
+```javascript
+Client.unloadService(url);
+const fresh = await Client.loadService(url);
+```
+
+`loadService(url, { forceReload: true })` does the eviction for you — it closes the cached instance
+before building the replacement, rather than overwriting the reference.
+
+---
+
+### Client.disconnect()
+
+Unloads **every** loaded service. Call it when a client is finished — a discarded client otherwise
+leaves every socket it ever opened running.
+
+```javascript
+const closed = Client.disconnect();   // number of services unloaded
+```
+
+---
+
+### Client.before / Client.after / Client.use(plugin)
+
+The client is a hooks-haver: `before` and `after` wrap **every outbound call on every loaded
+service**, and a loaded service has its own pair scoped to itself. Hooks take the same
+`(value, next)` shape as server middleware and **must call `next()`** — one that forgets hangs the
+call.
+
+```javascript
+Client.before(function (args, next) {        // every call, every service
+  this.setHeaders({ "X-Request-Id": id() });
+  next();
+});
+
+Client.before("Users.get", function (args, next) { … next(); });   // only that method
+
+Client.after(function (returnValue, next) { … next(); });
+```
+
+A `before` hook receives the call's arguments and may modify them; an `after` hook receives the
+return value and may modify it before the caller sees it. `this` is the module being called — its
+name is on `this.__name`.
+
+`Client.use(plugin)` hands the client to a function so a plugin can register hooks in one place.
+
+---
+
+### When a service is unreachable
+
+A call to a service that is not listening **throws an `Array`**, not an `Error` — the failed
+attempts, with element 0 carrying the underlying `AxiosError` (`code: "ECONNREFUSED"`). Code that
+reads `err.message` gets `undefined`.
+
+```javascript
+try {
+  await Games.getPage({ page: 1 });
+} catch (err) {
+  const first = Array.isArray(err) ? err[0] : err;
+  console.error(first.code, first.message);
+}
+```
+
+A service that connects and dies later rejects the same way once its retries are exhausted. It does
+not hang.
 
 ---
 
@@ -692,6 +840,13 @@ const result = await Storage.save({
 ### module.on(eventName, callback [, options])
 
 Listens for WebSocket events emitted by the server-side module. Returns an unsubscribe function — useful for React `useEffect` cleanup.
+
+**A subscription is a room join, and it is not instant.** The server emits with
+`socket.to(eventName)` — a socket.io room named after the event — and a client joins that room only
+when its `.on()` reaches the server over the websocket. So an event emitted **before** the
+subscription lands is not delivered late; it is never heard at all. If a method triggers an event
+you need, subscribe first and await the handshake, rather than subscribing and calling in the same
+tick.
 
 ```javascript
 const unsubscribe = Orders.on("order_created", (data) => {
@@ -750,6 +905,17 @@ Sets default HTTP headers sent with every request from this module. Module-level
 
 ```javascript
 Users.setHeaders({ Authorization: `Bearer ${token}` });
+```
+
+---
+
+### module.withHeaders(headers)
+
+A view of this module scoped to these headers, without mutating it — the module-level counterpart of
+`service.withHeaders`. Layers on top of the service's headers rather than replacing them.
+
+```javascript
+await Teams.withHeaders({ "Internal-Identity": sid }).add(team);
 ```
 
 ---

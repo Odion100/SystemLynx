@@ -17,6 +17,7 @@
 // URL gets per-module routing/failover for free. Mimicking the wire request would have owned the
 // request format in two places and known nothing about clusters.
 const createClient = require("../Client/Client");
+const loopbackOrigin = require("./components/loopbackOrigin");
 
 const isServiceLike = (x) =>
   x && typeof x === "object" && x.server && typeof x.server.use === "function";
@@ -416,7 +417,9 @@ module.exports = function createMCPServer(serviceOrTarget) {
   // ---------------------------------------------------------------- mounting
   // Suffix-matched middleware: the service owns its route prefix and may not have started yet,
   // so endpoints are recognized by what the path ENDS with, and the loopback base is derived
-  // from the CONNECTION — no config to know, and nothing the caller can steer.
+  // from the CONNECTION — no config to know, and nothing the caller can steer. That derivation is
+  // its own unit (`components/loopbackOrigin.js`): it carries a security property and an IPv6
+  // fix, and both are worth asserting directly rather than through a dispatch.
   //
   // SECURITY (found by systemview-test in review): an earlier version built the base from
   // `req.headers.host`, which is caller-controlled. A POST carrying `Host: anywhere` would make
@@ -428,14 +431,6 @@ module.exports = function createMCPServer(serviceOrTarget) {
   // cannot be forged by a header: the mounted form dispatches to the socket the request arrived
   // on, which is by definition itself. `encrypted` likewise beats `req.protocol`, which would
   // trust `X-Forwarded-Proto` if the app ever enabled trust proxy.
-  const loopbackOrigin = (req) => {
-    const socket = req.socket || {};
-    const raw = (socket.localAddress || "127.0.0.1").replace(/^::ffff:/, "");
-    const host = raw.includes(":") ? `[${raw}]` : raw; // IPv6 literals need brackets in a URL
-    const port = socket.localPort;
-    const protocol = socket.encrypted ? "https" : "http";
-    return `${protocol}://${host}${port ? `:${port}` : ""}`;
-  };
   const middleware = (req, res, next) => {
     const path = req.path.replace(/\/+$/, "");
     const suffix = Object.keys(served)

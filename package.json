@@ -1,6 +1,6 @@
 {
   "name": "systemlynx",
-  "version": "3.6.1",
+  "version": "3.6.2",
   "description": "",
   "main": "index.js",
   "browser": {
@@ -11,8 +11,7 @@
     "client.js",
     "systemlynx",
     "utils",
-    "API.md",
-    "LOADBALANCER.md",
+    "docs",
     "logo.png"
   ],
   "scripts": {
@@ -60,6 +59,9 @@
     "testEnvironment": "node",
     "moduleNameMapper": {
       "axios": "axios/dist/node/axios.cjs"
-    }
+    },
+    "modulePathIgnorePatterns": [
+      "<rootDir>/.systemview/"
+    ]
   }
 }
